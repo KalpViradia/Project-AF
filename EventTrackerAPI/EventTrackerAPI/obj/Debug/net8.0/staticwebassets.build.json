@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "9P/hYBq3Pwsb4JAGcSJxmmKpdiXTUFHNRgGR92+OSXc=",
+  "Source": "EventTrackerAPI",
+  "BasePath": "_content/EventTrackerAPI",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

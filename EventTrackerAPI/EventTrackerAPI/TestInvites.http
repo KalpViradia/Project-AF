@@ -1,0 +1,28 @@
+### Test GET Invites
+GET https://localhost:7094/api/event-invites
+Accept: application/json
+
+### Test GET Invites by User ID
+GET https://localhost:7094/api/event-invites?userId=test-user-id
+Accept: application/json
+
+### Test GET Invites by Event ID
+GET https://localhost:7094/api/event-invites?eventId=test-event-id
+Accept: application/json
+
+### Test Create Invite
+POST https://localhost:7094/api/event-invites
+Content-Type: application/json
+
+{
+    "eventId": "test-event-id",
+    "invitedUserId": "test-user-id"
+}
+
+### Test Update Invite Status
+PATCH https://localhost:7094/api/event-invites/test-invite-id/status
+Content-Type: application/json
+
+{
+    "status": "accepted"
+}
