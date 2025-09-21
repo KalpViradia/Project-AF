@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import '../model/event_comment_model.dart';
 import '../utils/api_constants.dart';
-import '../widgets/modern_snackbar.dart';
+import '../utils/modern_snackbar.dart';
 
 class EventCommentController extends GetxController {
   final RxList<EventComment> comments = <EventComment>[].obs;
@@ -68,12 +68,7 @@ class EventCommentController extends GetxController {
         // Keep local list in sync and ordered
         await loadEventComments(request.eventId, silent: true);
 
-        ModernSnackbar.success(
-          title: 'Success',
-          message: request.commentType == 'announcement'
-              ? 'Announcement posted successfully'
-              : 'Comment added successfully',
-        );
+        // Success snackbar suppressed to avoid noisy popups
         return true;
       } else {
         print('[Comments] POST failed (${response.statusCode}). Body: ${response.data}');
@@ -116,10 +111,7 @@ class EventCommentController extends GetxController {
         // Refresh to ensure ordering and server truth
         await loadEventComments(updatedComment.eventId, silent: true);
 
-        ModernSnackbar.success(
-          title: 'Success',
-          message: 'Comment updated successfully',
-        );
+        // Success snackbar suppressed to avoid noisy popups
         return true;
       } else {
         print('[Comments] PUT failed (${response.statusCode}). Body: ${response.data}');
@@ -161,10 +153,7 @@ class EventCommentController extends GetxController {
           await loadEventComments(eventId, silent: true);
         }
 
-        ModernSnackbar.success(
-          title: 'Success',
-          message: 'Comment deleted successfully',
-        );
+        // Success snackbar suppressed to avoid noisy popups
         return true;
       } else {
         print('[Comments] DELETE failed (${response.statusCode}). Body: ${response.data}');

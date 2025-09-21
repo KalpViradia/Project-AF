@@ -1,9 +1,8 @@
 import 'package:get/get.dart';
 import '../model/user/user_model.dart';
 import '../service/auth_service.dart';
-import '../services/storage_service.dart';
-import '../service/storage_service.dart' as CoreStorage;
-import '../services/auto_login_service.dart';
+import '../service/storage_service.dart';
+import '../service/auto_login_service.dart';
 import '../utils/modern_snackbar.dart';
 import '../utils/routes.dart';
 import '../controller/user_controller.dart';
@@ -31,7 +30,7 @@ class AuthController extends GetxController {
       print('🔍 Starting auth status check...');
       
       // Hard gate: if force-logout flag is set, never auto-login until next manual login
-      final forced = await CoreStorage.StorageService.getForceLogout();
+      final forced = await StorageService.getForceLogout();
       if (forced) {
         print('🛑 Force-logout flag detected - skipping any auto-login');
         isLoggedIn.value = false;
@@ -40,7 +39,7 @@ class AuthController extends GetxController {
       }
       
       // 1) Respect Remember Me and try local-token based auto-login path first
-      final remember = await CoreStorage.StorageService.getRememberMe();
+      final remember = await StorageService.getRememberMe();
       print('📋 Remember Me enabled: $remember');
       
       if (remember) {
@@ -59,7 +58,7 @@ class AuthController extends GetxController {
             isLoggedIn.value = true;
             
             // Also propagate token to AuthController for Dio interceptors
-            final localToken = await CoreStorage.StorageService.getToken();
+            final localToken = await StorageService.getToken();
             if (localToken != null && localToken.isNotEmpty) {
               token.value = localToken;
               print('🔐 Token set in AuthController');
@@ -132,7 +131,7 @@ class AuthController extends GetxController {
       isLoggedIn.value = true;
 
       // Respect Remember Me: persist only when enabled, otherwise ensure cleared
-      final remember = await CoreStorage.StorageService.getRememberMe();
+      final remember = await StorageService.getRememberMe();
       if (remember) {
         // Save login data to SharedPreferences (services storage)
         await StorageService.saveLoginData(
@@ -145,7 +144,7 @@ class AuthController extends GetxController {
       }
 
       // Clear any previous force-logout guard now that user manually logged in
-      await CoreStorage.StorageService.setForceLogout(false);
+      await StorageService.setForceLogout(false);
 
       // Update UserController's current user
       final userController = Get.find<UserController>();
@@ -156,21 +155,25 @@ class AuthController extends GetxController {
       print('Navigation complete');
     } catch (e) {
       error.value = e.toString();
-      ModernSnackbar.error(
-        title: "Login Failed",
-        message: e.toString(),
-      );
+      // Let the UI layer show the appropriate snackbar message
+      rethrow;
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
+  Future<void> register(String name, String email, String password, {String? phone, String? countryCode}) async {
     try {
       isLoading.value = true;
       error.value = null;
 
-      final response = await _authService.register(name, email, password);
+      final response = await _authService.register(
+        name,
+        email,
+        password,
+        phone: phone,
+        countryCode: countryCode,
+      );
       currentUser.value = response.user;
       token.value = response.token;
       isLoggedIn.value = true;
@@ -197,7 +200,7 @@ class AuthController extends GetxController {
       await StorageService.clearLoginData(); // clears services storage
 
       // Suppress next auto-login regardless of Remember Me by setting a one-time force-logout flag
-      await CoreStorage.StorageService.setForceLogout(true);
+      await StorageService.setForceLogout(true);
 
       // Explicitly reset reactive state
       currentUser.value = null;

@@ -320,7 +320,7 @@
     "Parameters": [
       {
         "Name": "request",
-        "Type": "EventTrackerAPI.DTOs.EventCommentCreateRequest",
+        "Type": "EventTrackerAPI.Models.DTOs.EventCommentCreateRequest",
         "IsRequired": true
       }
     ],
@@ -341,7 +341,7 @@
       },
       {
         "Name": "request",
-        "Type": "EventTrackerAPI.DTOs.EventCommentUpdateRequest",
+        "Type": "EventTrackerAPI.Models.DTOs.EventCommentUpdateRequest",
         "IsRequired": true
       }
     ],
@@ -528,6 +528,59 @@
         "Name": "userId",
         "Type": "System.String",
         "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "EventTrackerAPI.Controllers.SavedInviteesController",
+    "Method": "AddSavedInvitee",
+    "RelativePath": "api/saved-invitees",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "EventTrackerAPI.Controllers.SavedInviteesController\u002BSavedInviteeCreateRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "EventTrackerAPI.Controllers.SavedInviteesController",
+    "Method": "GetSavedInvitees",
+    "RelativePath": "api/saved-invitees/{ownerUserId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ownerUserId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "EventTrackerAPI.Controllers.SavedInviteesController",
+    "Method": "RemoveSavedInvitee",
+    "RelativePath": "api/saved-invitees/{ownerUserId}/{savedUserId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ownerUserId",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "savedUserId",
+        "Type": "System.String",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []

@@ -19,9 +19,9 @@ public partial class EventTrackerDbContext : DbContext
 
     public virtual DbSet<Event> Events { get; set; }
 
-    public virtual DbSet<EventUser> EventUsers { get; set; }
     public virtual DbSet<EventInvite> EventInvites { get; set; }
     public virtual DbSet<EventComment> EventComments { get; set; }
+    public virtual DbSet<SavedInvitee> SavedInvitees { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -43,10 +43,14 @@ public partial class EventTrackerDbContext : DbContext
             entity.HasIndex(e => e.CreatedBy, "IX_Events_CreatedBy");
 
             entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Latitude).HasColumnType("float").IsRequired(false);
+            entity.Property(e => e.Longitude).HasColumnType("float").IsRequired(false);
+            entity.Property(e => e.PickedFromMap).HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EventType).HasMaxLength(100);
             entity.Property(e => e.IsVisible).HasDefaultValue(true);
+            entity.Property(e => e.CommentsEnabled).HasDefaultValue(true);
             entity.Property(e => e.Title).HasMaxLength(200);
             
             // Recurring event properties
@@ -64,21 +68,42 @@ public partial class EventTrackerDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
-        modelBuilder.Entity<EventUser>(entity =>
+        modelBuilder.Entity<SavedInvitee>(entity =>
         {
-            entity.HasKey(e => new { e.EventId, e.UserId });
+            entity.ToTable("SavedInvitees");
+            entity.HasKey(e => new { e.OwnerUserId, e.SavedUserId });
 
-            entity.HasIndex(e => e.UserId, "IX_EventUsers_UserId");
+            entity.Property(e => e.OwnerUserId)
+                .IsRequired()
+                .HasColumnType("nvarchar(450)");
 
-            entity.Property(e => e.InvitedAt).HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.Note).HasMaxLength(500);
-            entity.Property(e => e.Role).HasMaxLength(50);
-            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.SavedUserId)
+                .IsRequired()
+                .HasColumnType("nvarchar(450)");
 
-            entity.HasOne(d => d.Event).WithMany(p => p.EventUsers).HasForeignKey(d => d.EventId);
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasColumnType("datetime2")
+                .HasDefaultValueSql("GETUTCDATE()");
 
-            entity.HasOne(d => d.User).WithMany(p => p.EventUsers).HasForeignKey(d => d.UserId);
+            entity.HasOne(d => d.OwnerUser)
+                .WithMany(p => p.SavedInvitees)
+                .HasForeignKey(d => d.OwnerUserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(d => d.SavedUser)
+                .WithMany()
+                .HasForeignKey(d => d.SavedUserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(e => e.OwnerUserId)
+                .HasDatabaseName("IX_SavedInvitees_OwnerUserId");
+
+            entity.HasIndex(e => e.SavedUserId)
+                .HasDatabaseName("IX_SavedInvitees_SavedUserId");
         });
+
+        // EventUsers entity removed (deprecated). Use EventInvites for participation tracking.
 
         modelBuilder.Entity<User>(entity =>
         {
@@ -92,6 +117,7 @@ public partial class EventTrackerDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Password).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.CountryCode).HasMaxLength(10);
         });
 
         modelBuilder.Entity<EventInvite>(entity =>

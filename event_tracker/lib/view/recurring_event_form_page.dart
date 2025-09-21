@@ -14,17 +14,23 @@ class RecurringEventFormPage extends StatefulWidget {
 class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
   final _formKey = GlobalKey<FormState>();
   final EventController _eventController = Get.find<EventController>();
+  final InviteController _inviteController = Get.find<InviteController>();
   late CategoryController _categoryController;
   
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _addressController;
+  late TextEditingController _maxCapacityController;
   late DateTime _startDate;
   TimeOfDay? _startTime;
   DateTime? _endDate;
   TimeOfDay? _endTime;
-  int? _maxCapacity;
   String? _eventType;
+  int? _maxCapacity;
+  bool _commentsEnabled = true;
+  List<UserModel> _savedInvitees = [];
+  final Set<String> _selectedInviteeIds = <String>{};
+  bool _loadingInvitees = true;
   
   // Recurring event fields
   String _recurrenceType = 'yearly';
@@ -44,6 +50,9 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
     _titleController = TextEditingController(text: event?.title);
     _descriptionController = TextEditingController(text: event?.description);
     _addressController = TextEditingController(text: event?.address);
+    _maxCapacityController = TextEditingController(text: event?.maxCapacity?.toString() ?? '');
+    _maxCapacity = event?.maxCapacity;
+    _commentsEnabled = event?.commentsEnabled ?? true;
     
     if (event != null) {
       _startDate = DateTime(event.startDateTime.year, event.startDateTime.month, event.startDateTime.day);
@@ -59,7 +68,6 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
       _startTime = TimeOfDay.now();
     }
     
-    _maxCapacity = event?.maxCapacity;
     _eventType = event?.eventType;
     
     // Initialize recurring event fields
@@ -79,6 +87,8 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
         }
       });
     }
+
+    _loadSavedInvitees();
   }
 
   @override
@@ -86,7 +96,39 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _addressController.dispose();
+    _maxCapacityController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSavedInvitees() async {
+    final currentUser = Get.find<AuthController>().currentUser.value;
+    if (currentUser != null) {
+      try {
+        final backendUsers = await Get.find<SavedInviteesService>()
+            .getSavedInvitees(currentUser.userId);
+        if (backendUsers.isNotEmpty) {
+          setState(() {
+            _savedInvitees = backendUsers;
+            _loadingInvitees = false;
+          });
+          return;
+        }
+      } catch (_) {
+        // ignore and fallback
+      }
+    }
+    try {
+      final users = await StorageService.getInvitees();
+      setState(() {
+        _savedInvitees = users;
+        _loadingInvitees = false;
+      });
+    } catch (_) {
+      setState(() {
+        _savedInvitees = [];
+        _loadingInvitees = false;
+      });
+    }
   }
 
   @override
@@ -137,6 +179,7 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -336,8 +379,11 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
 
               const SizedBox(height: 16),
 
-              // Start Date
-              ModernCard(
+              // Start Date (tap anywhere to change)
+              GestureDetector(
+                onTap: () => _selectStartDateTime(),
+                behavior: HitTestBehavior.opaque,
+                child: ModernCard(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
@@ -382,12 +428,15 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
                     ),
                   ],
                 ),
-              ),
+              )),
 
               // End Date/Time (only if time is included)
               if (_includeTime) ...[
                 const SizedBox(height: 12),
-                ModernCard(
+                GestureDetector(
+                  onTap: () => _selectEndDateTime(),
+                  behavior: HitTestBehavior.opaque,
+                  child: ModernCard(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
@@ -435,7 +484,7 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
                       ),
                     ],
                   ),
-                ),
+                )),
               ],
 
               const SizedBox(height: 24),
@@ -573,6 +622,171 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
               }),
 
               const SizedBox(height: 32),
+
+              // Event Settings
+              Text(
+                'Event Settings',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Max Capacity
+              ModernTextField(
+                controller: _maxCapacityController,
+                labelText: 'Maximum Capacity',
+                hintText: 'Enter maximum number of attendees',
+                prefixIcon: Icons.people_rounded,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(7),
+                ],
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    final number = int.tryParse(value);
+                    if (number == null) {
+                      return 'Please enter a valid number';
+                    }
+                    if (number <= 0) {
+                      return 'Capacity must be greater than 0';
+                    }
+                    if (number > 1000000) {
+                      return 'Capacity cannot exceed 1,000,000';
+                    }
+                  }
+                  return null;
+                },
+                onChanged: (value) {
+                  setState(() {
+                    _maxCapacity = int.tryParse(value);
+                  });
+                },
+              ),
+
+              const SizedBox(height: 8),
+              Text(
+                'Leave empty for unlimited capacity',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Comments toggle
+              ModernCard(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Allow Comments',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Turn off to restrict to announcements only',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _commentsEnabled,
+                      onChanged: (v) => setState(() => _commentsEnabled = v),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Invite People Section
+              Text(
+                'Invite People',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ModernCard(
+                padding: const EdgeInsets.all(16),
+                child: _loadingInvitees
+                    ? const Center(child: CircularProgressIndicator())
+                    : (_savedInvitees.isEmpty
+                    ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your invitees list is empty.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => Get.toNamed(ROUTE_INVITEES_LIST),
+                        icon: const Icon(Icons.people_alt),
+                        label: const Text('Manage Invitees'),
+                      ),
+                    ),
+                  ],
+                )
+                    : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ..._savedInvitees.map((u) {
+                      final selected = _selectedInviteeIds.contains(u.userId);
+                      return CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(u.name),
+                        subtitle: Text(u.phone ?? u.email),
+                        value: selected,
+                        onChanged: (v) {
+                          setState(() {
+                            if (v == true) {
+                              _selectedInviteeIds.add(u.userId);
+                            } else {
+                              _selectedInviteeIds.remove(u.userId);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final result = await Get.toNamed(ROUTE_INVITEES_LIST);
+                          if (result != null) {
+                            await _loadSavedInvitees();
+                          }
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit Invitees List'),
+                      ),
+                    ),
+                  ],
+                )),
+              ),
 
               // Submit Button
               Container(
@@ -744,27 +958,27 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
 
       final event = widget.event;
       if (event == null) {
-        // Create new recurring event
-        final success = await _eventController.createEvent(
+        // Create new recurring event (returning created event)
+        final created = await _eventController.createRecurringEventReturningEvent(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           startDateTime: startDateTime,
           endDateTime: endDateTime,
           address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-          maxCapacity: _maxCapacity,
           eventType: _eventType,
           categoryId: _categoryController.selectedCategory.value?.categoryId,
-          isRecurring: true,
           recurrenceType: _recurrenceType,
           recurrenceInterval: _recurrenceInterval,
           recurrenceEndDate: _recurrenceEndDate,
+          maxCapacity: _maxCapacity,
+          commentsEnabled: _commentsEnabled,
         );
         
-        if (success) {
-          ModernSnackbar.success(
-            title: 'Recurring Event Created',
-            message: 'Your recurring event has been created successfully',
-          );
+        if (created != null) {
+          // Auto-send invites for selected users
+          if (_selectedInviteeIds.isNotEmpty) {
+            await Future.wait(_selectedInviteeIds.map((uid) => _inviteController.createEventInvite(created.id, uid)));
+          }
           Get.offAllNamed(ROUTE_RECURRING_EVENTS);
         }
       } else {
@@ -776,7 +990,6 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
           startDateTime: startDateTime,
           endDateTime: endDateTime,
           address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-          maxCapacity: _maxCapacity,
           eventType: _eventType,
           categoryId: _categoryController.selectedCategory.value?.categoryId,
           createdBy: event.createdBy,
@@ -788,6 +1001,8 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
           recurrenceType: _recurrenceType,
           recurrenceInterval: _recurrenceInterval,
           recurrenceEndDate: _recurrenceEndDate,
+          maxCapacity: _maxCapacity,
+          commentsEnabled: _commentsEnabled,
         );
         
         final success = await _eventController.updateEvent(updatedEvent);
@@ -796,6 +1011,9 @@ class _RecurringEventFormPageState extends State<RecurringEventFormPage> {
             title: 'Event Updated',
             message: 'Recurring event updated successfully',
           );
+          if (_selectedInviteeIds.isNotEmpty) {
+            await Future.wait(_selectedInviteeIds.map((uid) => _inviteController.createEventInvite(updatedEvent.id, uid)));
+          }
           Get.offAllNamed(ROUTE_RECURRING_EVENTS);
         }
       }

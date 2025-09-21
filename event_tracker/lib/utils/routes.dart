@@ -10,7 +10,6 @@ const String ROUTE_EVENT_DETAILS = '/event-details';
 const String ROUTE_CREATE_EVENT = '/create-event';
 const String ROUTE_EVENT_EDIT = '/event-edit';
 const String ROUTE_SPLASH = '/splash';
-const String ROUTE_THEME_CUSTOMIZATION = '/theme-customization';
 const String ROUTE_INVITE_USERS = '/invite-users';
 const String ROUTE_EVENT_INVITES = '/event-invites';
 const String ROUTE_MY_INVITES = '/my-invites';
@@ -20,6 +19,9 @@ const String ROUTE_RECURRING_EVENTS = '/recurring-events';
 const String ROUTE_CREATE_RECURRING_EVENT = '/create-recurring-event';
 const String ROUTE_EDIT_RECURRING_EVENT = '/edit-recurring-event';
 const String ROUTE_EVENT_COMMENTS = '/event-comments';
+const String ROUTE_INVITEES_LIST = '/invitees-list';
+const String ROUTE_THEME = '/theme';
+const String ROUTE_MAP_PICKER = '/map-picker';
 //endregion
 
 class AppRoutes {
@@ -34,7 +36,6 @@ class AppRoutes {
   static String get createEvent => ROUTE_CREATE_EVENT;
   static String get eventEdit => ROUTE_EVENT_EDIT;
   static String get splash => ROUTE_SPLASH;
-  static String get themeCustomization => ROUTE_THEME_CUSTOMIZATION;
   static String get inviteUsers => ROUTE_INVITE_USERS;
   static String get eventInvites => ROUTE_EVENT_INVITES;
   static String get myInvites => ROUTE_MY_INVITES;
@@ -44,4 +45,7 @@ class AppRoutes {
   static String get createRecurringEvent => ROUTE_CREATE_RECURRING_EVENT;
   static String get editRecurringEvent => ROUTE_EDIT_RECURRING_EVENT;
   static String get eventComments => ROUTE_EVENT_COMMENTS;
+  static String get inviteesList => ROUTE_INVITEES_LIST;
+  static String get theme => ROUTE_THEME;
+  static String get mapPicker => ROUTE_MAP_PICKER;
 }

@@ -80,11 +80,7 @@ class EventInviteController extends GetxController {
       );
 
       await _eventInviteService.createEventInvite(invite);
-      
-      ModernSnackbar.success(
-        title: 'Invite Sent',
-        message: 'Event invite sent successfully',
-      );
+      // Success snackbar suppressed to avoid noisy popups
       
       return true;
     } on DioException catch (e) {
@@ -110,10 +106,7 @@ class EventInviteController extends GetxController {
       
       if (success) {
         await loadEventInvites();
-        ModernSnackbar.success(
-          title: 'Status Updated',
-          message: 'Invite status updated successfully',
-        );
+        // Success snackbar suppressed to avoid noisy popups
       }
       
       return success;
@@ -140,10 +133,7 @@ class EventInviteController extends GetxController {
       
       if (success) {
         await loadEventInvites();
-        ModernSnackbar.success(
-          title: 'Invite Removed',
-          message: 'Event invitation deleted successfully',
-        );
+        // Success snackbar suppressed to avoid noisy popups
       }
       
       return success;

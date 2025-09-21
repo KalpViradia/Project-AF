@@ -22,8 +22,12 @@ namespace EventTrackerAPI.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            var user = _context.Users.FirstOrDefault(u => u.Email == request.Email && u.Password == request.Password);
+            var email = (request.Email ?? string.Empty).Trim();
+            var user = _context.Users.FirstOrDefault(u => u.Email == email);
             if (user == null)
+                return Unauthorized(new { message = "Invalid email or password" });
+            // Enforce case-sensitive password match
+            if (!string.Equals(user.Password, request.Password, StringComparison.Ordinal))
                 return Unauthorized(new { message = "Invalid email or password" });
             if (user.IsActive != 1)
                 return Unauthorized(new { message = "User is not active" });
@@ -36,22 +40,40 @@ namespace EventTrackerAPI.Controllers
             // Generate a simple JWT token (you should use proper JWT implementation in production)
             var token = GenerateJwtToken(user);
 
-            return Ok(new { token = token, user = user });
+            var userResponse = new
+            {
+                userId = user.UserId,
+                name = user.Name,
+                email = user.Email,
+                phone = user.Phone,
+                countryCode = user.CountryCode,
+                address = user.Address,
+                dateOfBirth = user.DateOfBirth,
+                gender = user.Gender,
+                bio = user.Bio,
+                isActive = user.IsActive,
+                createdAt = user.CreatedAt,
+                lastLogin = user.LastLogin
+            };
+
+            return Ok(new { token, user = userResponse });
         }
 
         [HttpPost("signup")]
         public IActionResult Signup([FromBody] SignupRequest request)
         {
-            if (_context.Users.Any(u => u.Email == request.Email))
+            var email = (request.Email ?? string.Empty).Trim();
+            if (_context.Users.Any(u => u.Email == email))
                 return BadRequest(new { message = "Email already exists" });
 
             var user = new User
             {
                 UserId = Guid.NewGuid().ToString(),
                 Name = request.Name,
-                Email = request.Email,
+                Email = email,
                 Password = request.Password,
                 Phone = request.Phone,
+                CountryCode = request.CountryCode,
                 Address = request.Address,
                 DateOfBirth = request.DateOfBirth,
                 IsActive = 1,
@@ -60,7 +82,25 @@ namespace EventTrackerAPI.Controllers
 
             _context.Users.Add(user);
             _context.SaveChanges();
-            return Ok(user);
+
+            var token = GenerateJwtToken(user);
+            var userResponse = new
+            {
+                userId = user.UserId,
+                name = user.Name,
+                email = user.Email,
+                phone = user.Phone,
+                countryCode = user.CountryCode,
+                address = user.Address,
+                dateOfBirth = user.DateOfBirth,
+                gender = user.Gender,
+                bio = user.Bio,
+                isActive = user.IsActive,
+                createdAt = user.CreatedAt,
+                lastLogin = user.LastLogin
+            };
+
+            return Ok(new { token, user = userResponse });
         }
 
         [HttpPost("logout")]
@@ -112,6 +152,7 @@ namespace EventTrackerAPI.Controllers
             public string UserId { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
             public string? Phone { get; set; }
+            public string? CountryCode { get; set; }
             public string? Gender { get; set; }
             public string? DateOfBirth { get; set; }
             public string? Bio { get; set; }
@@ -132,6 +173,7 @@ namespace EventTrackerAPI.Controllers
             // Update allowed fields
             user.Name = request.Name;
             user.Phone = request.Phone;
+            user.CountryCode = request.CountryCode;
             user.Gender = request.Gender;
             user.DateOfBirth = !string.IsNullOrEmpty(request.DateOfBirth)
                 ? DateTime.Parse(request.DateOfBirth)
@@ -330,6 +372,7 @@ namespace EventTrackerAPI.Controllers
                     name = user.Name,
                     email = user.Email,
                     phone = user.Phone,
+                    countryCode = user.CountryCode,
                     address = user.Address,
                     dateOfBirth = user.DateOfBirth,
                     gender = user.Gender,
@@ -357,6 +400,7 @@ namespace EventTrackerAPI.Controllers
             public required string Email { get; set; }
             public required string Password { get; set; }
             public string? Phone { get; set; }
+            public string? CountryCode { get; set; }
             public string? Address { get; set; }
             public DateTime? DateOfBirth { get; set; }
         }

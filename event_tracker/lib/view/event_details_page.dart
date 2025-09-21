@@ -1,4 +1,5 @@
 import '../utils/import_export.dart';
+import 'package:flutter/foundation.dart';
 import '../controller/category_controller.dart';
 import 'event_comments_page.dart';
 
@@ -19,9 +20,10 @@ class EventDetailsPage extends StatelessWidget {
       builder: (context, snapshot) {
         final invite = snapshot.data;
         final isOwner = event.value.createdBy == Get.find<UserController>().currentUser.value?.userId;
-        final hasPermissions = invite?.status == InviteStatus.accepted;
-        final canEdit = isOwner || hasPermissions;
-        final canInvite = isOwner || hasPermissions;
+        final isInvited = invite != null;
+        // Owner-only permissions
+        final canEdit = isOwner;
+        final canInvite = isOwner;
 
         return Scaffold(
           body: CustomScrollView(
@@ -84,9 +86,12 @@ class EventDetailsPage extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.chat_bubble_outline),
                     onPressed: () {
+                      // Even when comments are disabled, announcements should remain available
                       Get.to(() => EventCommentsPage(event: event.value));
                     },
-                    tooltip: 'Comments & Announcements',
+                    tooltip: event.value.commentsEnabled
+                        ? 'Comments & Announcements'
+                        : 'Announcements (comments disabled)',
                   ),
                   if (canEdit)
                     IconButton(
@@ -159,16 +164,28 @@ class EventDetailsPage extends StatelessWidget {
                                 theme.colorScheme.secondary,
                               ),
                             ],
-                            if (event.value.address != null) ...[
-                              const Divider(height: 24),
-                              _buildInfoRow(
+                            const Divider(height: 24),
+                            GestureDetector(
+                              onTap: () async {
+                                final ev = event.value;
+                                if (ev.pickedFromMap && ev.latitude != null && ev.longitude != null) {
+                                  await _openInMapsByCoords(ev.latitude!, ev.longitude!, ev.address);
+                                } else {
+                                  ModernSnackbar.info(
+                                    title: 'Location Not Picked',
+                                    message: 'This event\'s location was not picked from map.',
+                                  );
+                                }
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: _buildInfoRow(
                                 Icons.location_on_rounded,
                                 'Location',
-                                event.value.address!,
+                                event.value.address ?? 'TBA',
                                 theme.colorScheme.tertiary,
                               ),
-                            ],
-                            if (event.value.maxCapacity != null) ...[
+                            ),
+                            if (event.value.maxCapacity != null && (event.value.maxCapacity ?? 0) > 0) ...[
                               const Divider(height: 24),
                               _buildInfoRow(
                                 Icons.people_rounded,
@@ -211,6 +228,14 @@ class EventDetailsPage extends StatelessWidget {
                                   );
                                 },
                               ),
+                            ] else ...[
+                              const Divider(height: 24),
+                              _buildInfoRow(
+                                Icons.people_alt_outlined,
+                                'Capacity',
+                                'Unlimited capacity',
+                                theme.colorScheme.outline,
+                              ),
                             ],
                           ],
                         ),
@@ -218,7 +243,7 @@ class EventDetailsPage extends StatelessWidget {
 
                       const SizedBox(height: 24),
                 // Status/Action Row
-                if (isOwner || hasPermissions)
+                if (isOwner)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -243,8 +268,16 @@ class EventDetailsPage extends StatelessWidget {
                         child: _buildStatusChip('Completed', event.value.isCompleted, Colors.green),
                       ),
                     ],
+                  )
+                else if (isInvited)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatusChip('Cancelled', event.value.isCancelled, Colors.red),
+                      _buildStatusChip('Completed', event.value.isCompleted, Colors.green),
+                    ],
                   ),
-                      if (!isOwner && !hasPermissions && invite != null)
+                      if (!isOwner && invite != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 24),
                           child: Center(
@@ -446,5 +479,25 @@ class EventDetailsPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// Helper for opening maps
+extension _EventMapsHelper on EventDetailsPage {
+  Future<void> _openInMapsByCoords(double lat, double lon, String? label) async {
+    final labelEnc = Uri.encodeComponent(label ?? 'Event location');
+    final geo = Uri.parse('geo:$lat,$lon?q=$lat,$lon($labelEnc)');
+    final web = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lon');
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        if (await canLaunchUrl(geo)) {
+          final ok = await launchUrl(geo, mode: LaunchMode.externalApplication);
+          if (ok) return;
+        }
+      }
+      await launchUrl(web, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      await launchUrl(web);
+    }
   }
 }

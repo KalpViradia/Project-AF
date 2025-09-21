@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EventTrackerAPI.Models;
-using EventTrackerAPI.DTOs;
 using EventTrackerAPI.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -67,10 +66,10 @@ namespace EventTrackerAPI.Controllers
                     return BadRequest(new { message = "EventId and Content are required" });
                 }
 
-                // Validate event exists
-                var eventExists = await _context.Events.AnyAsync(e => e.Id == request.EventId);
-                Console.WriteLine($"[EventComments] Event exists: {eventExists}");
-                if (!eventExists)
+                // Load event for validation and permissions
+                var eventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == request.EventId);
+                Console.WriteLine($"[EventComments] Event exists: {eventObj != null}");
+                if (eventObj == null)
                 {
                     return BadRequest(new { message = "Event not found" });
                 }
@@ -83,11 +82,22 @@ namespace EventTrackerAPI.Controllers
                     return BadRequest(new { message = "User not found or not logged in" });
                 }
 
-                // Check if user is event creator for announcements
-                if (request.CommentType == "announcement")
+                // Normalize comment type, default to 'comment'
+                var normalizedType = string.IsNullOrWhiteSpace(request.CommentType)
+                    ? "comment"
+                    : request.CommentType.Trim().ToLower();
+
+                // Enforce comments toggle: if comments are disabled, block all regular comments (including owner)
+                if (normalizedType == "comment" && eventObj.CommentsEnabled == false)
                 {
-                    var eventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == request.EventId);
-                    if (eventObj?.CreatedBy != userId)
+                    Console.WriteLine("[EventComments] Comments disabled for this event; blocking user comment");
+                    return BadRequest(new { message = "Comments are disabled for this event" });
+                }
+
+                // Check if user is event creator for announcements
+                if (normalizedType == "announcement")
+                {
+                    if (eventObj.CreatedBy != userId)
                     {
                         Console.WriteLine("[EventComments] Forbid: non-creator attempted announcement");
                         return Forbid("Only event creators can post announcements");
@@ -100,7 +110,7 @@ namespace EventTrackerAPI.Controllers
                     EventId = request.EventId,
                     UserId = userId,
                     Content = request.Content,
-                    CommentType = request.CommentType,
+                    CommentType = normalizedType,
                     CreatedAt = DateTime.UtcNow
                 };
 

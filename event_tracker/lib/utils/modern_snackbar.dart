@@ -3,6 +3,11 @@ import 'package:get/get.dart';
 
 /// Modern snackbar utility for consistent design across the app
 class ModernSnackbar {
+  // Deduplication: track last shown time per message key
+  static final Map<String, DateTime> _lastShownAt = {};
+  // Throttling window for identical messages
+  static Duration minIntervalPerMessage = const Duration(seconds: 3);
+
   static void show({
     required String title,
     required String message,
@@ -11,6 +16,16 @@ class ModernSnackbar {
     SnackPosition position = SnackPosition.BOTTOM,
     bool isDismissible = true,
   }) {
+    // Generate a stable key for this snackbar content
+    final key = '${type.name}|$title|$message|${position.name}';
+    final now = DateTime.now();
+    final last = _lastShownAt[key];
+    if (last != null && now.difference(last) < minIntervalPerMessage) {
+      // Skip showing duplicate within the cooldown window
+      return;
+    }
+    _lastShownAt[key] = now;
+
     final theme = Get.theme;
     final colorScheme = theme.colorScheme;
     
@@ -41,6 +56,8 @@ class ModernSnackbar {
         break;
     }
     
+    // Avoid stacking too many snackbars visually
+    Get.closeAllSnackbars();
     Get.snackbar(
       title,
       message,

@@ -29,6 +29,9 @@ namespace EventTrackerAPI.Controllers
                 StartDateTime = e.StartDateTime,
                 EndDateTime = e.EndDateTime,
                 Address = e.Address,
+                Latitude = e.Latitude,
+                Longitude = e.Longitude,
+                PickedFromMap = e.PickedFromMap,
                 CategoryId = e.CategoryId,
                 Category = e.Category != null ? new CategoryDTO
                 {
@@ -41,6 +44,7 @@ namespace EventTrackerAPI.Controllers
                 } : null,
                 EventType = e.EventType,
                 MaxCapacity = e.MaxCapacity,
+                CommentsEnabled = e.CommentsEnabled,
                 IsCancelled = e.IsCancelled,
                 IsCompleted = e.IsCompleted,
                 IsVisible = e.IsVisible,
@@ -144,9 +148,13 @@ namespace EventTrackerAPI.Controllers
                 StartDateTime = request.StartDateTime, 
                 EndDateTime = request.EndDateTime, 
                 Address = request.Address, 
+                Latitude = request.Latitude,
+                Longitude = request.Longitude,
+                PickedFromMap = request.PickedFromMap ?? false,
                 CategoryId = request.CategoryId, 
                 EventType = request.EventType, 
                 MaxCapacity = request.MaxCapacity, 
+                CommentsEnabled = request.CommentsEnabled ?? true,
                 CreatedBy = request.CreatedBy, 
                 CreatedAt = DateTime.UtcNow, 
                 IsVisible = true, 
@@ -181,6 +189,9 @@ namespace EventTrackerAPI.Controllers
                 EndDateTime = createdEvent.EndDateTime,
 
                 Address = createdEvent.Address,
+                Latitude = createdEvent.Latitude,
+                Longitude = createdEvent.Longitude,
+                PickedFromMap = createdEvent.PickedFromMap,
                 CategoryId = createdEvent.CategoryId,
                 Category = createdEvent.Category != null ? new CategoryDTO
                 {
@@ -193,6 +204,7 @@ namespace EventTrackerAPI.Controllers
                 } : null,
                 EventType = createdEvent.EventType,
                 MaxCapacity = createdEvent.MaxCapacity,
+                CommentsEnabled = createdEvent.CommentsEnabled,
                 IsCancelled = createdEvent.IsCancelled,
                 IsCompleted = createdEvent.IsCompleted,
                 IsVisible = createdEvent.IsVisible,
@@ -236,9 +248,13 @@ namespace EventTrackerAPI.Controllers
             ev.StartDateTime = request.StartDateTime;
             ev.EndDateTime = request.EndDateTime;
             ev.Address = request.Address;
+            ev.Latitude = request.Latitude;
+            ev.Longitude = request.Longitude;
+            if (request.PickedFromMap.HasValue) ev.PickedFromMap = request.PickedFromMap.Value;
             ev.CategoryId = request.CategoryId;
             ev.EventType = request.EventType;
             ev.MaxCapacity = request.MaxCapacity;
+            if (request.CommentsEnabled.HasValue) ev.CommentsEnabled = request.CommentsEnabled.Value;
             ev.IsRecurring = request.IsRecurring;
             ev.RecurrenceType = request.RecurrenceType;
             ev.RecurrenceInterval = request.RecurrenceInterval;
@@ -306,6 +322,7 @@ namespace EventTrackerAPI.Controllers
                 } : null,
                 EventType = updatedEvent.EventType,
                 MaxCapacity = updatedEvent.MaxCapacity,
+                CommentsEnabled = updatedEvent.CommentsEnabled,
                 IsCancelled = updatedEvent.IsCancelled,
                 IsCompleted = updatedEvent.IsCompleted,
                 IsVisible = updatedEvent.IsVisible,
@@ -429,15 +446,17 @@ namespace EventTrackerAPI.Controllers
                         .CountAsync();
                 }
 
-                var maxCapacity = eventEntity.MaxCapacity ?? 0;
-                var availableSpaces = maxCapacity - totalAcceptedParticipants;
+                // If MaxCapacity is null => unlimited capacity
+                bool unlimited = !eventEntity.MaxCapacity.HasValue || eventEntity.MaxCapacity.Value == 0;
+                var maxCapacity = unlimited ? 0 : eventEntity.MaxCapacity!.Value;
+                var availableSpaces = unlimited ? int.MaxValue : Math.Max(0, maxCapacity - totalAcceptedParticipants);
 
                 var response = new
                 {
                     EventId = id,
-                    MaxCapacity = maxCapacity,
+                    MaxCapacity = maxCapacity, // 0 means unlimited for clients
                     AcceptedParticipants = totalAcceptedParticipants,
-                    AvailableSpaces = Math.Max(0, availableSpaces)
+                    AvailableSpaces = availableSpaces
                 };
                 
                 return Ok(response);
@@ -479,9 +498,13 @@ namespace EventTrackerAPI.Controllers
         public DateTime StartDateTime { get; set; }
         public DateTime? EndDateTime { get; set; }
         public string? Address { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public bool? PickedFromMap { get; set; }
         public int? CategoryId { get; set; }
         public string? EventType { get; set; }
         public int? MaxCapacity { get; set; }
+        public bool? CommentsEnabled { get; set; }
         public required string CreatedBy { get; set; }
         
         // Recurring event properties
@@ -498,9 +521,13 @@ namespace EventTrackerAPI.Controllers
         public DateTime StartDateTime { get; set; }
         public DateTime? EndDateTime { get; set; }
         public string? Address { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public bool? PickedFromMap { get; set; }
         public int? CategoryId { get; set; }
         public string? EventType { get; set; }
         public int? MaxCapacity { get; set; }
+        public bool? CommentsEnabled { get; set; }
         
         // Recurring event properties
         public bool IsRecurring { get; set; } = false;

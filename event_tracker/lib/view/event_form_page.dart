@@ -14,61 +14,87 @@ class EventFormPage extends StatefulWidget {
 class _EventFormPageState extends State<EventFormPage> {
   final _formKey = GlobalKey<FormState>();
   final EventController _eventController = Get.find<EventController>();
+  final EventService _eventService = Get.find<EventService>();
+  final InviteController _inviteController = Get.find<InviteController>();
   late CategoryController _categoryController;
   
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _addressController;
+  late TextEditingController _maxCapacityController;
   late DateTime _startDateTime;
   late DateTime? _endDateTime;
   int? _maxCapacity;
   String? _eventType;
+  int _currentParticipants = 0;
+  bool _commentsEnabled = true;
+  List<UserModel> _savedInvitees = [];
+  final Set<String> _selectedInviteeIds = <String>{};
+  bool _loadingInvitees = true;
+  // Map fields
+  double? _latitude;
+  double? _longitude;
+  bool _pickedFromMap = false;
   
-  // Recurring event fields
-  bool _isRecurring = false;
-  String? _recurrenceType;
-  int _recurrenceInterval = 1;
-  DateTime? _recurrenceEndDate;
 
   @override
   void initState() {
     super.initState();
     _categoryController = Get.put(CategoryController(Get.find()));
     _initializeControllers();
+    _loadCurrentParticipants();
   }
 
-  String? _normalizeRecurrenceType(String? value) {
-    if (value == null) return null;
-    switch (value.toLowerCase()) {
-      case 'daily':
-        return 'Daily';
-      case 'weekly':
-        return 'Weekly';
-      case 'monthly':
-        return 'Monthly';
-      case 'yearly':
-        return 'Yearly';
-      default:
-        // If it's not one of the allowed values, return null so dropdown shows hint
-        return null;
+  Future<void> _loadSavedInvitees() async {
+    final currentUser = Get.find<AuthController>().currentUser.value;
+    // Try backend first
+    if (currentUser != null) {
+      try {
+        final backendUsers = await Get.find<SavedInviteesService>()
+            .getSavedInvitees(currentUser.userId);
+        if (backendUsers.isNotEmpty) {
+          setState(() {
+            _savedInvitees = backendUsers;
+            _loadingInvitees = false;
+          });
+          return;
+        }
+      } catch (_) {
+        // Ignore and fallback to local storage
+      }
+    }
+
+    // Fallback to local storage
+    try {
+      final users = await StorageService.getInvitees();
+      setState(() {
+        _savedInvitees = users;
+        _loadingInvitees = false;
+      });
+    } catch (_) {
+      setState(() {
+        _savedInvitees = [];
+        _loadingInvitees = false;
+      });
     }
   }
+
 
   void _initializeControllers() {
     final event = widget.event;
     _titleController = TextEditingController(text: event?.title);
     _descriptionController = TextEditingController(text: event?.description);
     _addressController = TextEditingController(text: event?.address);
+    _maxCapacityController = TextEditingController(text: event?.maxCapacity?.toString() ?? '');
     _startDateTime = event?.startDateTime ?? DateTime.now();
     _endDateTime = event?.endDateTime;
     _maxCapacity = event?.maxCapacity;
     _eventType = event?.eventType;
+    _commentsEnabled = event?.commentsEnabled ?? true;
+    _latitude = event?.latitude;
+    _longitude = event?.longitude;
+    _pickedFromMap = event?.pickedFromMap ?? false;
     
-    // Initialize recurring event fields
-    _isRecurring = event?.isRecurring ?? false;
-    _recurrenceType = _normalizeRecurrenceType(event?.recurrenceType);
-    _recurrenceInterval = event?.recurrenceInterval ?? 1;
-    _recurrenceEndDate = event?.recurrenceEndDate;
     
     // Set selected category if editing existing event
     if (event?.categoryId != null) {
@@ -79,6 +105,24 @@ class _EventFormPageState extends State<EventFormPage> {
         }
       });
     }
+
+    // Load saved invitees
+    _loadSavedInvitees();
+  }
+
+  void _loadCurrentParticipants() async {
+    if (widget.event != null) {
+      try {
+        final capacityInfo = await _eventService.getEventCapacityInfo(widget.event!.id);
+        setState(() {
+          _currentParticipants = (capacityInfo['acceptedParticipants'] as int?) ?? 0;
+        });
+      } catch (e) {
+        setState(() {
+          _currentParticipants = 0;
+        });
+      }
+    }
   }
 
   @override
@@ -86,6 +130,7 @@ class _EventFormPageState extends State<EventFormPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _addressController.dispose();
+    _maxCapacityController.dispose();
     super.dispose();
   }
 
@@ -207,8 +252,11 @@ class _EventFormPageState extends State<EventFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Start Date/Time
-              ModernCard(
+              // Start Date/Time (tap anywhere to change)
+              GestureDetector(
+                onTap: () => _selectDateTime(isStart: true),
+                behavior: HitTestBehavior.opaque,
+                child: ModernCard(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
@@ -238,19 +286,22 @@ class _EventFormPageState extends State<EventFormPage> {
                         ],
                       ),
                     ),
-                    TextButton.icon(
+                    IconButton(
                       onPressed: () => _selectDateTime(isStart: true),
                       icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('Change'),
+                      tooltip: 'Change start date & time',
                     ),
                   ],
                 ),
-              ),
+              )),
 
               const SizedBox(height: 12),
 
-              // End Date/Time
-              ModernCard(
+              // End Date/Time (tap anywhere to change)
+              GestureDetector(
+                onTap: () => _selectDateTime(isStart: false),
+                behavior: HitTestBehavior.opaque,
+                child: ModernCard(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
@@ -285,14 +336,14 @@ class _EventFormPageState extends State<EventFormPage> {
                         ],
                       ),
                     ),
-                    TextButton.icon(
+                    IconButton(
                       onPressed: () => _selectDateTime(isStart: false),
                       icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('Change'),
+                      tooltip: 'Change end date & time',
                     ),
                   ],
                 ),
-              ),
+              )),
 
               const SizedBox(height: 24),
               // Location Section
@@ -313,6 +364,13 @@ class _EventFormPageState extends State<EventFormPage> {
                 keyboardType: TextInputType.streetAddress,
                 textCapitalization: TextCapitalization.words,
                 maxLines: 2,
+                onChanged: (val) {
+                  setState(() {
+                    _pickedFromMap = false;
+                    _latitude = null;
+                    _longitude = null;
+                  });
+                },
                 validator: (value) {
                   if (value != null && value.trim().isNotEmpty) {
                     if (value.trim().length < 5) {
@@ -324,6 +382,42 @@ class _EventFormPageState extends State<EventFormPage> {
                   }
                   return null;
                 },
+              ),
+
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final result = await Get.toNamed(ROUTE_MAP_PICKER, arguments: {
+                      'address': _addressController.text.trim(),
+                    });
+                    if (result is Map) {
+                      final addr = (result['address'] as String?)?.trim();
+                      final lat = (result['latitude'] as num?)?.toDouble();
+                      final lon = (result['longitude'] as num?)?.toDouble();
+                      final picked = (result['pickedFromMap'] == true);
+                      setState(() {
+                        if (addr != null && addr.isNotEmpty) {
+                          _addressController.text = addr;
+                        }
+                        _latitude = lat;
+                        _longitude = lon;
+                        _pickedFromMap = picked;
+                      });
+                    } else if (result is String && result.trim().isNotEmpty) {
+                      // Backwards compatibility: address-only
+                      setState(() {
+                        _addressController.text = result.trim();
+                        _pickedFromMap = false;
+                        _latitude = null;
+                        _longitude = null;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Pick on Map'),
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -354,6 +448,7 @@ class _EventFormPageState extends State<EventFormPage> {
               const SizedBox(height: 16),
 
               ModernTextField(
+                controller: _maxCapacityController,
                 labelText: 'Maximum Capacity',
                 hintText: 'Enter maximum number of attendees',
                 prefixIcon: Icons.people_rounded,
@@ -374,6 +469,10 @@ class _EventFormPageState extends State<EventFormPage> {
                     if (number > 1000000) {
                       return 'Capacity cannot exceed 1,000,000';
                     }
+                    // Check if capacity is below current participant count
+                    if (_currentParticipants > 0 && number < _currentParticipants) {
+                      return 'Capacity cannot be less than current participants ($_currentParticipants)';
+                    }
                   }
                   return null;
                 },
@@ -392,25 +491,15 @@ class _EventFormPageState extends State<EventFormPage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // Recurring Event Section
-              Text(
-                'Recurring Event',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
               const SizedBox(height: 16),
 
-              // Recurring toggle
+              // Comments toggle
               ModernCard(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Icon(
-                      Icons.repeat,
+                      Icons.chat_bubble_outline_rounded,
                       color: theme.colorScheme.primary,
                       size: 24,
                     ),
@@ -420,14 +509,13 @@ class _EventFormPageState extends State<EventFormPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Make this a recurring event',
-                            style: theme.textTheme.bodyLarge?.copyWith(
+                            'Allow Comments',
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 4),
                           Text(
-                            'Perfect for birthdays, anniversaries, and regular events',
+                            'Turn off to restrict to announcements only',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -436,188 +524,87 @@ class _EventFormPageState extends State<EventFormPage> {
                       ),
                     ),
                     Switch(
-                      value: _isRecurring,
-                      onChanged: (value) {
-                        setState(() {
-                          _isRecurring = value;
-                          if (!value) {
-                            _recurrenceType = null;
-                            _recurrenceInterval = 1;
-                            _recurrenceEndDate = null;
-                          }
-                        });
-                      },
+                      value: _commentsEnabled,
+                      onChanged: (v) => setState(() => _commentsEnabled = v),
                     ),
                   ],
                 ),
               ),
 
-              // Recurring options (only show when recurring is enabled)
-              if (_isRecurring) ...[
-                const SizedBox(height: 16),
-                
-                // Recurrence type dropdown
-                ModernCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Repeat every',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          // Interval input
-                          SizedBox(
-                            width: 80,
-                            child: TextFormField(
-                              initialValue: _recurrenceInterval.toString(),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(2),
-                              ],
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Required';
-                                }
-                                final number = int.tryParse(value);
-                                if (number == null || number < 1 || number > 99) {
-                                  return 'Invalid';
-                                }
-                                return null;
-                              },
-                              onChanged: (value) {
-                                final number = int.tryParse(value);
-                                if (number != null && number > 0) {
-                                  setState(() {
-                                    _recurrenceInterval = number;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Recurrence type dropdown
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _recurrenceType,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                              ),
-                              hint: const Text('Select frequency'),
-                              items: const [
-                                DropdownMenuItem(value: 'Daily', child: Text('Day(s)')),
-                                DropdownMenuItem(value: 'Weekly', child: Text('Week(s)')),
-                                DropdownMenuItem(value: 'Monthly', child: Text('Month(s)')),
-                                DropdownMenuItem(value: 'Yearly', child: Text('Year(s)')),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _recurrenceType = value;
-                                });
-                              },
-                              validator: (value) {
-                                if (_isRecurring && (value == null || value.isEmpty)) {
-                                  return 'Please select frequency';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 24),
 
-                const SizedBox(height: 16),
-
-                // End date for recurrence
-                ModernCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Stop repeating (optional)',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.event_repeat,
-                            color: theme.colorScheme.secondary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _recurrenceEndDate == null
-                                  ? 'No end date (repeats forever)'
-                                  : 'Ends on ${DateFormat('MMM dd, yyyy').format(_recurrenceEndDate!)}',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: _recurrenceEndDate == null
-                                    ? theme.colorScheme.onSurfaceVariant
-                                    : null,
-                              ),
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: _recurrenceEndDate ?? _startDateTime.add(const Duration(days: 365)),
-                                firstDate: _startDateTime,
-                                lastDate: DateTime.now().add(const Duration(days: 3650)), // 10 years
-                              );
-                              if (date != null) {
-                                setState(() {
-                                  _recurrenceEndDate = date;
-                                });
-                              }
-                            },
-                            icon: const Icon(Icons.calendar_today, size: 18),
-                            label: Text(_recurrenceEndDate == null ? 'Set' : 'Change'),
-                          ),
-                          if (_recurrenceEndDate != null)
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _recurrenceEndDate = null;
-                                });
-                              },
-                              icon: const Icon(Icons.clear, size: 18),
-                              tooltip: 'Remove end date',
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+              // Invite People Section
+              Text(
+                'Invite People',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              ModernCard(
+                padding: const EdgeInsets.all(16),
+                child: _loadingInvitees
+                    ? const Center(child: CircularProgressIndicator())
+                    : (_savedInvitees.isEmpty
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your invitees list is empty.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () => Get.toNamed(ROUTE_INVITEES_LIST),
+                                  icon: const Icon(Icons.people_alt),
+                                  label: const Text('Manage Invitees'),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ..._savedInvitees.map((u) {
+                                final selected = _selectedInviteeIds.contains(u.userId);
+                                return CheckboxListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(u.name),
+                                  subtitle: Text(u.phone ?? u.email),
+                                  value: selected,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selectedInviteeIds.add(u.userId);
+                                      } else {
+                                        _selectedInviteeIds.remove(u.userId);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () async {
+                                    final result = await Get.toNamed(ROUTE_INVITEES_LIST);
+                                    if (result != null) {
+                                      await _loadSavedInvitees();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.edit),
+                                  label: const Text('Edit Invitees List'),
+                                ),
+                              ),
+                            ],
+                          )),
+              ),
+
 
               const SizedBox(height: 24),
 
@@ -812,26 +799,26 @@ class _EventFormPageState extends State<EventFormPage> {
       final event = widget.event;
       if (event == null) {
         // Create new event
-        final success = await _eventController.createEvent(
+        final created = await _eventController.createEventReturningEvent(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           startDateTime: _startDateTime,
           endDateTime: _endDateTime,
-          address: _addressController.text.trim(),
+          address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
+          pickedFromMap: _pickedFromMap,
           maxCapacity: _maxCapacity,
           eventType: _eventType,
           categoryId: _categoryController.selectedCategory.value?.categoryId,
-          isRecurring: _isRecurring,
-          recurrenceType: _recurrenceType,
-          recurrenceInterval: _recurrenceInterval,
-          recurrenceEndDate: _recurrenceEndDate,
+          commentsEnabled: _commentsEnabled,
         );
-        if (success) {
-          ModernSnackbar.success(
-            title: 'Event Created',
-            message: 'Your event has been created successfully',
-          );
-          Get.offAllNamed(ROUTE_HOME); // Redirect to home page
+        if (created != null) {
+          // Auto-send invites for selected users (silently skip duplicates)
+          if (_selectedInviteeIds.isNotEmpty) {
+            await Future.wait(_selectedInviteeIds.map((uid) => _inviteController.createEventInvite(created.id, uid)));
+          }
+          Get.offAllNamed(ROUTE_HOME);
         }
       } else {
         // Update existing event
@@ -841,7 +828,10 @@ class _EventFormPageState extends State<EventFormPage> {
           description: _descriptionController.text.trim(),
           startDateTime: _startDateTime,
           endDateTime: _endDateTime,
-          address: _addressController.text.trim(),
+          address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
+          pickedFromMap: _pickedFromMap,
           maxCapacity: _maxCapacity,
           eventType: _eventType,
           categoryId: _categoryController.selectedCategory.value?.categoryId,
@@ -850,10 +840,7 @@ class _EventFormPageState extends State<EventFormPage> {
           isCancelled: event.isCancelled,
           isCompleted: event.isCompleted,
           updatedAt: DateTime.now(),
-          isRecurring: _isRecurring,
-          recurrenceType: _recurrenceType,
-          recurrenceInterval: _recurrenceInterval,
-          recurrenceEndDate: _recurrenceEndDate,
+          commentsEnabled: _commentsEnabled,
         );
         final success = await _eventController.updateEvent(updatedEvent);
         if (success) {
@@ -863,6 +850,10 @@ class _EventFormPageState extends State<EventFormPage> {
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.green[100],
           );
+          // Send invites after update as well
+          if (_selectedInviteeIds.isNotEmpty) {
+            await Future.wait(_selectedInviteeIds.map((uid) => _inviteController.createEventInvite(updatedEvent.id, uid)));
+          }
           Get.offAllNamed(ROUTE_HOME);
         }
       }

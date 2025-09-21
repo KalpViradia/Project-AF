@@ -20,6 +20,7 @@ class AuthService {
       final response = await _apiService.post(
         ApiConstants.login,
         body: request.toJson(),
+        useAuth: false,
       );
 
       print('Login API Response: $response');
@@ -72,15 +73,18 @@ class AuthService {
     }
   }
 
-  Future<AuthResponse> register(String name, String email, String password) async {
+  Future<AuthResponse> register(String name, String email, String password, {String? phone, String? countryCode}) async {
     final request = RegisterRequest(
       name: name,
       email: email,
       password: password,
+      phone: phone,
+      countryCode: countryCode,
     );
     final response = await _apiService.post(
       ApiConstants.signup,
       body: request.toJson(),
+      useAuth: false,
     );
     final authResponse = AuthResponse.fromJson(response);
     await _apiService.setToken(authResponse.token);
@@ -131,6 +135,7 @@ class AuthService {
         'userId': user.userId,
         'name': user.name,
         'phone': user.phone,
+        'countryCode': user.countryCode,
         'gender': user.gender,
         'dateOfBirth': user.dateOfBirth,
         'bio': user.bio,

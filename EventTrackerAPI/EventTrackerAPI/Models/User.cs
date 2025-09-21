@@ -15,6 +15,8 @@ public partial class User
 
     public string? Phone { get; set; }
 
+    public string? CountryCode { get; set; }
+
     public string? Address { get; set; }
 
     public DateTime? DateOfBirth { get; set; }
@@ -31,7 +33,7 @@ public partial class User
 
     public bool IsLoggedIn { get; set; } = false;
 
-    public virtual ICollection<EventUser> EventUsers { get; set; } = new List<EventUser>();
-
     public virtual ICollection<Event> Events { get; set; } = new List<Event>();
+
+    public virtual ICollection<SavedInvitee> SavedInvitees { get; set; } = new List<SavedInvitee>();
 }

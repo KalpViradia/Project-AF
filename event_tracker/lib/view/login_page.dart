@@ -211,9 +211,6 @@ class LoginPage extends StatelessWidget {
                   if (password.isEmpty) {
                     userController.passwordError.value = 'Password cannot be empty';
                     isValid = false;
-                  } else if (password.length < 6) {
-                    userController.passwordError.value = 'Password must be at least 6 characters';
-                    isValid = false;
                   }
 
                   if (isValid) {
@@ -223,9 +220,22 @@ class LoginPage extends StatelessWidget {
                       await StorageService.setRememberMe(rememberMe.value);
                       await authController.login(email, password);
                     } catch (e) {
+                      final raw = e.toString();
+                      // Extract message from ApiException: [status] message
+                      final match = RegExp(r'ApiException:\s*\[\d+\]\s*(.+)$', multiLine: true)
+                          .firstMatch(raw);
+                      String msg;
+                      if (match != null) {
+                        msg = match.group(1)!.trim();
+                      } else {
+                        msg = raw.replaceAll('Exception: ', '').trim();
+                      }
+                      if (msg.isEmpty || msg.toLowerCase().contains('unauthorized')) {
+                        msg = 'Incorrect email or password. Please try again.';
+                      }
                       ModernSnackbar.error(
                         title: 'Login Failed',
-                        message: 'Please check your credentials and try again.',
+                        message: msg,
                       );
                     } finally {
                       isLoading.value = false;

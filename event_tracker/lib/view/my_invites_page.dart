@@ -8,9 +8,9 @@ class MyInvitesPage extends StatelessWidget {
     final theme = Theme.of(context);
     final inviteController = Get.find<InviteController>();
 
-    // Load user invites when page opens
+    // Load user invites silently when page opens (prevents disruptive snackbars)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      inviteController.loadUserInvites();
+      inviteController.loadUserInvites(silent: true);
     });
 
     return Scaffold(

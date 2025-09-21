@@ -117,7 +117,7 @@ class ProfilePage extends StatelessWidget {
                                   _buildInfoTile(
                                     icon: Icons.phone,
                                     title: 'Phone Number',
-                                    value: user.phone?.isNotEmpty == true ? user.phone! : 'Not provided',
+                                    value: _formatPhone(user),
                                     iconColor: theme.colorScheme.primary,
                                   ),
                                   const Divider(height: 24),
@@ -131,7 +131,7 @@ class ProfilePage extends StatelessWidget {
                                   _buildInfoTile(
                                     icon: Icons.cake,
                                     title: 'Date of Birth',
-                                    value: user.dateOfBirth ?? 'Not provided',
+                                    value: _formatDateOfBirth(user.dateOfBirth),
                                     iconColor: theme.colorScheme.tertiary,
                                   ),
                                 ],
@@ -166,6 +166,42 @@ class ProfilePage extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _formatDateOfBirth(String? dateOfBirth) {
+    if (dateOfBirth == null || dateOfBirth.isEmpty) {
+      return 'Not provided';
+    }
+    
+    try {
+      // Parse the date string and format it to show only the date part
+      final DateTime date = DateTime.parse(dateOfBirth);
+      return DateFormat('MMM dd, yyyy').format(date);
+    } catch (e) {
+      // If parsing fails, return the original string
+      return dateOfBirth;
+    }
+  }
+
+  String _formatPhone(UserModel user) {
+    final rawNumber = (user.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final cc = (user.countryCode ?? '').trim();
+    if (rawNumber.isEmpty && cc.isEmpty) return 'Not provided';
+
+    if (cc.isNotEmpty) {
+      final normCc = cc.startsWith('+') ? cc : '+$cc';
+      return rawNumber.isNotEmpty ? '$normCc $rawNumber' : normCc;
+    }
+
+    // Try to parse E.164 if phone itself contains +
+    final raw = user.phone ?? '';
+    if (raw.startsWith('+')) {
+      final compact = raw.replaceAll(' ', '');
+      final m = RegExp(r'^(\+\d{1,4})(\d+)$').firstMatch(compact);
+      if (m != null) return '${m.group(1)} ${m.group(2)}';
+    }
+
+    return rawNumber.isNotEmpty ? rawNumber : 'Not provided';
   }
 
   Widget _buildInfoTile({

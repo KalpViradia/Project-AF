@@ -90,6 +90,22 @@ using (var scope = app.Services.CreateScope())
                 END";
             context.Database.ExecuteSqlRaw(sql);
             Console.WriteLine("ParticipantCount column added via direct SQL.");
+
+            // Drop EventUsers table if it still exists (deprecation fallback)
+            var dropEventUsersSql = @"
+                IF OBJECT_ID(N'[dbo].[EventUsers]', 'U') IS NOT NULL
+                BEGIN
+                    DROP TABLE [dbo].[EventUsers]
+                END";
+            try
+            {
+                context.Database.ExecuteSqlRaw(dropEventUsersSql);
+                Console.WriteLine("EventUsers table dropped via direct SQL.");
+            }
+            catch (Exception dropEx)
+            {
+                Console.WriteLine($"Direct SQL drop of EventUsers failed: {dropEx.Message}");
+            }
         }
         catch (Exception sqlEx)
         {

@@ -10,10 +10,14 @@ namespace EventTrackerAPI.Models.DTOs
         public DateTime StartDateTime { get; set; }
         public DateTime? EndDateTime { get; set; }
         public string? Address { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public bool PickedFromMap { get; set; }
         public int? CategoryId { get; set; }
         public CategoryDTO? Category { get; set; }
         public string? EventType { get; set; }
         public int? MaxCapacity { get; set; }
+        public bool CommentsEnabled { get; set; }
         public bool IsCancelled { get; set; }
         public bool IsCompleted { get; set; }
         public bool IsVisible { get; set; }

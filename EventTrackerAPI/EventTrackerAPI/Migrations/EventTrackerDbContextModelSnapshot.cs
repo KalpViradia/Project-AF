@@ -17,7 +17,7 @@ namespace EventTrackerAPI.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "8.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -62,6 +62,11 @@ namespace EventTrackerAPI.Migrations
 
                     b.Property<int?>("CategoryId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("CommentsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -232,47 +237,28 @@ namespace EventTrackerAPI.Migrations
                     b.ToTable("EventInvites", (string)null);
                 });
 
-            modelBuilder.Entity("EventTrackerAPI.Models.EventUser", b =>
+            modelBuilder.Entity("EventTrackerAPI.Models.SavedInvitee", b =>
                 {
-                    b.Property<string>("EventId")
+                    b.Property<string>("OwnerUserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("UserId")
+                    b.Property<string>("SavedUserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("Adults")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Children")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("InvitedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.HasKey("OwnerUserId", "SavedUserId");
 
-                    b.Property<DateTime?>("RespondedAt")
-                        .HasColumnType("datetime2");
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("IX_SavedInvitees_OwnerUserId");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.HasIndex("SavedUserId")
+                        .HasDatabaseName("IX_SavedInvitees_SavedUserId");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("EventId", "UserId");
-
-                    b.HasIndex(new[] { "UserId" }, "IX_EventUsers_UserId");
-
-                    b.ToTable("EventUsers");
+                    b.ToTable("SavedInvitees", (string)null);
                 });
 
             modelBuilder.Entity("EventTrackerAPI.Models.User", b =>
@@ -307,6 +293,11 @@ namespace EventTrackerAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<bool>("IsLoggedIn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("LastLogin")
                         .HasColumnType("datetime2");
@@ -388,23 +379,23 @@ namespace EventTrackerAPI.Migrations
                     b.Navigation("InvitedUser");
                 });
 
-            modelBuilder.Entity("EventTrackerAPI.Models.EventUser", b =>
+            modelBuilder.Entity("EventTrackerAPI.Models.SavedInvitee", b =>
                 {
-                    b.HasOne("EventTrackerAPI.Models.Event", "Event")
-                        .WithMany("EventUsers")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("EventTrackerAPI.Models.User", "OwnerUser")
+                        .WithMany("SavedInvitees")
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("EventTrackerAPI.Models.User", "User")
-                        .WithMany("EventUsers")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("EventTrackerAPI.Models.User", "SavedUser")
+                        .WithMany()
+                        .HasForeignKey("SavedUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.Navigation("Event");
+                    b.Navigation("OwnerUser");
 
-                    b.Navigation("User");
+                    b.Navigation("SavedUser");
                 });
 
             modelBuilder.Entity("EventTrackerAPI.Models.Category", b =>
@@ -415,15 +406,13 @@ namespace EventTrackerAPI.Migrations
             modelBuilder.Entity("EventTrackerAPI.Models.Event", b =>
                 {
                     b.Navigation("EventInvites");
-
-                    b.Navigation("EventUsers");
                 });
 
             modelBuilder.Entity("EventTrackerAPI.Models.User", b =>
                 {
-                    b.Navigation("EventUsers");
-
                     b.Navigation("Events");
+
+                    b.Navigation("SavedInvitees");
                 });
 #pragma warning restore 612, 618
         }

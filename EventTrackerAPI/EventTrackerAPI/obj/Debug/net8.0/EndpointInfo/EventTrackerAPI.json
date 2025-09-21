@@ -892,6 +892,89 @@
           }
         }
       }
+    },
+    "/api/saved-invitees/{ownerUserId}": {
+      "get": {
+        "tags": [
+          "SavedInvitees"
+        ],
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/saved-invitees": {
+      "post": {
+        "tags": [
+          "SavedInvitees"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedInviteeCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedInviteeCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedInviteeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/saved-invitees/{ownerUserId}/{savedUserId}": {
+      "delete": {
+        "tags": [
+          "SavedInvitees"
+        ],
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "savedUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -970,6 +1053,20 @@
             "type": "string",
             "nullable": true
           },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "pickedFromMap": {
+            "type": "boolean",
+            "nullable": true
+          },
           "categoryId": {
             "type": "integer",
             "format": "int32",
@@ -982,6 +1079,10 @@
           "maxCapacity": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "commentsEnabled": {
+            "type": "boolean",
             "nullable": true
           },
           "createdBy": {
@@ -1088,6 +1189,20 @@
             "type": "string",
             "nullable": true
           },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "pickedFromMap": {
+            "type": "boolean",
+            "nullable": true
+          },
           "categoryId": {
             "type": "integer",
             "format": "int32",
@@ -1100,6 +1215,10 @@
           "maxCapacity": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "commentsEnabled": {
+            "type": "boolean",
             "nullable": true
           },
           "isRecurring": {
@@ -1207,6 +1326,24 @@
         },
         "additionalProperties": false
       },
+      "SavedInviteeCreateRequest": {
+        "required": [
+          "ownerUserId",
+          "savedUserId"
+        ],
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "savedUserId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SignupRequest": {
         "required": [
           "email",
@@ -1228,6 +1365,10 @@
             "nullable": true
           },
           "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
             "type": "string",
             "nullable": true
           },
@@ -1268,6 +1409,10 @@
             "nullable": true
           },
           "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
             "type": "string",
             "nullable": true
           },

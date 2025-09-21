@@ -104,6 +104,17 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
+                // Invitees List (below Recurring Events)
+                _buildDrawerItem(
+                  context: context,
+                  icon: Icons.people_alt,
+                  title: 'Invitees',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Get.toNamed(ROUTE_INVITEES_LIST);
+                  },
+                ),
+
                 // Hidden Events
                 _buildDrawerItem(
                   context: context,
@@ -115,14 +126,14 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
-                // Customize Theme
+                // Theme
                 _buildDrawerItem(
                   context: context,
-                  icon: Icons.palette,
-                  title: 'Customize Theme',
+                  icon: Icons.color_lens,
+                  title: 'Theme',
                   onTap: () {
                     Navigator.pop(context);
-                    Get.toNamed(ROUTE_THEME_CUSTOMIZATION);
+                    Get.toNamed(ROUTE_THEME);
                   },
                 ),
 

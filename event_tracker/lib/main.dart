@@ -5,6 +5,8 @@ import 'view/reset_password_page.dart';
 import 'view/recurring_events_page.dart';
 import 'view/recurring_event_form_page.dart';
 import 'view/event_comments_page.dart';
+import 'view/theme_customization_page.dart';
+import 'view/map_picker_page.dart';
 
 void main() async {
   print('Starting app initialization...');
@@ -28,6 +30,14 @@ void main() async {
   print('Initializing services...');
   Get.put(CategoryService());
   Get.put(EventService());
+  // Saved invitees backend service
+  Get.put(SavedInviteesService());
+  // Real-time WebSocket service
+  Get.put(RealTimeService());
+  await Get.find<RealTimeService>().initialize();
+  // Local notifications
+  Get.put(NotificationService());
+  await Get.find<NotificationService>().initialize();
   
   // Initialize event-related controllers
   print('Initializing event controllers...');
@@ -48,16 +58,13 @@ class MyApp extends StatelessWidget {
 
     return Obx(() => GetMaterialApp(
           title: 'Event Tracker',
-          theme: themeController.customTheme ?? lightTheme,
+          theme: themeController.currentTheme,
           darkTheme: darkTheme,
-          themeMode: themeController.customTheme != null
-              ? ThemeMode.light
-              : themeController.themeMode,
+          themeMode: themeController.themeMode,
           debugShowCheckedModeBanner: false,
           initialRoute: ROUTE_SPLASH,
           getPages: [
             GetPage(name: ROUTE_SPLASH, page: () => const SplashPage()),
-            GetPage(name: ROUTE_THEME_CUSTOMIZATION, page: () => const ThemeCustomizationPage()),
             GetPage(name: ROUTE_LOGIN, page: () => const LoginPage()),
             GetPage(name: ROUTE_SIGNUP, page: () => const SignupPage()),
             GetPage(name: ROUTE_FORGOT_PASSWORD, page: () => const ForgotPasswordPage()),
@@ -126,6 +133,21 @@ class MyApp extends StatelessWidget {
             GetPage(
               name: ROUTE_EVENT_COMMENTS,
               page: () => EventCommentsPage(event: Get.arguments as Event),
+              middlewares: [AuthMiddleware()],
+            ),
+            GetPage(
+              name: ROUTE_INVITEES_LIST,
+              page: () => const InviteesListPage(),
+              middlewares: [AuthMiddleware()],
+            ),
+            GetPage(
+              name: ROUTE_THEME,
+              page: () => const ThemeCustomizationPage(),
+              middlewares: [AuthMiddleware()],
+            ),
+            GetPage(
+              name: ROUTE_MAP_PICKER,
+              page: () => const MapPickerPage(),
               middlewares: [AuthMiddleware()],
             ),
           ],

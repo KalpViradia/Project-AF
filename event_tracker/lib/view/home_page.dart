@@ -2,26 +2,38 @@ import '../utils/import_export.dart';
 import '../controller/category_controller.dart';
 import '../widgets/app_drawer.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   final EventController eventController = Get.find<EventController>();
   final UserController userController = Get.find<UserController>();
   final ThemeController themeController = Get.find<ThemeController>();
   final InviteController inviteController = Get.find<InviteController>();
   final CategoryController categoryController = Get.put(CategoryController(Get.find()));
   final Rxn<int> selectedCategoryFilter = Rxn<int>();
+  final Map<String, Future<Map<String, dynamic>>> _capacityFutures = {};
 
-  HomePage({super.key});
+  @override
+  void initState() {
+    super.initState();
+    // Load events and invites once when the page mounts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      eventController.loadEvents();
+      inviteController.loadInvitedEvents(silent: true);
+      inviteController.loadUserInvites(silent: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Load events and invites when page opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      eventController.loadEvents();
-      inviteController.loadInvitedEvents();
-      inviteController.loadUserInvites();
-    });
+    // (one-time loads moved to initState to avoid repeated reloads)
 
     return Scaffold(
       appBar: AppBar(
@@ -374,56 +386,57 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
 
-                // Location (if available)
-                if (event.address != null) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.location_on_rounded,
-                          size: 20,
-                          color: theme.colorScheme.secondary,
-                        ),
+                // Location (always show, TBA when not set)
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Location',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              event.address!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
+                      child: Icon(
+                        Icons.location_on_rounded,
+                        size: 20,
+                        color: theme.colorScheme.secondary,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Location',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            event.address ?? 'TBA',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
 
-                // Capacity information (if available)
+                // Capacity information
                 if (event.maxCapacity != null) ...[
                   const SizedBox(height: 16),
                   FutureBuilder<Map<String, dynamic>>(
-                    future: Get.find<EventService>().getEventCapacityInfo(event.id),
+                    future: _capacityFutures.putIfAbsent(
+                      event.id,
+                      () => Get.find<EventService>().getEventCapacityInfo(event.id),
+                    ),
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         final data = snapshot.data!;

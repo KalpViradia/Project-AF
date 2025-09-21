@@ -7,9 +7,13 @@ class Event {
   final DateTime startDateTime;
   final DateTime? endDateTime;
   final String? address;
+  final double? latitude;
+  final double? longitude;
+  final bool pickedFromMap;
   final int? categoryId;
   final String? eventType;
   final int? maxCapacity;
+  final bool commentsEnabled;
   final bool isCancelled;
   final bool isCompleted;
   final bool isVisible;
@@ -31,9 +35,13 @@ class Event {
     required this.startDateTime,
     this.endDateTime,
     this.address,
+    this.latitude,
+    this.longitude,
+    this.pickedFromMap = false,
     this.categoryId,
     this.eventType,
     this.maxCapacity,
+    this.commentsEnabled = true,
     this.isCancelled = false,
     this.isCompleted = false,
     this.isVisible = true,
@@ -56,9 +64,13 @@ class Event {
       'startDateTime': startDateTime.toIso8601String(),
       'endDateTime': endDateTime?.toIso8601String(),
       'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'pickedFromMap': pickedFromMap,
       'categoryId': categoryId,
       'eventType': eventType,
       'maxCapacity': maxCapacity,
+      'commentsEnabled': commentsEnabled,
       'isCancelled': isCancelled,
       'isCompleted': isCompleted,
       'isVisible': isVisible,
@@ -86,9 +98,19 @@ class Event {
             ? DateTime.parse((json['endDateTime'] ?? json['EndDateTime']).toString())
             : null,
         address: (json['address'] ?? json['Address'])?.toString(),
+        latitude: (json['latitude'] ?? json['Latitude']) != null
+            ? double.tryParse((json['latitude'] ?? json['Latitude']).toString())
+            : null,
+        longitude: (json['longitude'] ?? json['Longitude']) != null
+            ? double.tryParse((json['longitude'] ?? json['Longitude']).toString())
+            : null,
+        pickedFromMap: (json['pickedFromMap'] ?? json['PickedFromMap']) == true || (json['pickedFromMap'] ?? json['PickedFromMap']) == 1,
         categoryId: (json['categoryId'] ?? json['CategoryId']) != null ? int.tryParse((json['categoryId'] ?? json['CategoryId']).toString()) : null,
         eventType: (json['eventType'] ?? json['EventType'])?.toString(),
         maxCapacity: (json['maxCapacity'] ?? json['MaxCapacity']) != null ? int.tryParse((json['maxCapacity'] ?? json['MaxCapacity']).toString()) : null,
+        commentsEnabled: (json['commentsEnabled'] ?? json['CommentsEnabled']) == null
+            ? true
+            : ((json['commentsEnabled'] ?? json['CommentsEnabled']) == true || (json['commentsEnabled'] ?? json['CommentsEnabled']) == 1),
         isCancelled: (json['isCancelled'] ?? json['IsCancelled']) == true || (json['isCancelled'] ?? json['IsCancelled']) == 1,
         isCompleted: (json['isCompleted'] ?? json['IsCompleted']) == true || (json['isCompleted'] ?? json['IsCompleted']) == 1,
         isVisible: (json['isVisible'] ?? json['IsVisible']) == true || (json['isVisible'] ?? json['IsVisible']) == 1,
@@ -119,9 +141,13 @@ class Event {
     DateTime? startDateTime,
     DateTime? endDateTime,
     String? address,
+    double? latitude,
+    double? longitude,
+    bool? pickedFromMap,
     int? categoryId,
     String? eventType,
     int? maxCapacity,
+    bool? commentsEnabled,
     bool? isCancelled,
     bool? isCompleted,
     bool? isVisible,
@@ -141,9 +167,13 @@ class Event {
       startDateTime: startDateTime ?? this.startDateTime,
       endDateTime: endDateTime ?? this.endDateTime,
       address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      pickedFromMap: pickedFromMap ?? this.pickedFromMap,
       categoryId: categoryId ?? this.categoryId,
       eventType: eventType ?? this.eventType,
       maxCapacity: maxCapacity ?? this.maxCapacity,
+      commentsEnabled: commentsEnabled ?? this.commentsEnabled,
       isCancelled: isCancelled ?? this.isCancelled,
       isCompleted: isCompleted ?? this.isCompleted,
       isVisible: isVisible ?? this.isVisible,

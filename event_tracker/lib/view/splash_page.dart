@@ -57,8 +57,11 @@ class _SplashPageState extends State<SplashPage> {
         ),
         child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
               // Animated Logo
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 1500),
@@ -79,10 +82,21 @@ class _SplashPageState extends State<SplashPage> {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.event_note,
-                        size: 80,
-                        color: Colors.white,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/images/AppLogo.png',
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.event_note,
+                              size: 80,
+                              color: Colors.white,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   );
@@ -157,9 +171,93 @@ class _SplashPageState extends State<SplashPage> {
                   );
                 },
               ),
+                  ],
+                ),
+              ),
+              
+              // White strip with logos at the bottom
+              _buildLogoStrip(),
             ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildLogoStrip() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // DU Logo (flex: 2)
+          Expanded(
+            flex: 2,
+            child: Container(
+              height: 60, // same height
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/DULogo.jpg',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.school,
+                        color: Colors.grey,
+                        size: 40,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 24),
+
+          // ASWDC Logo (flex: 1)
+          Expanded(
+            flex: 1,
+            child: Container(
+              height: 60, // keep same height
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/ASWDCLogo.jpg',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.code,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

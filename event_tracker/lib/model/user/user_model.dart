@@ -3,6 +3,7 @@ class UserModel {
   final String name;
   final String email;
   final String? phone;
+  final String? countryCode;
   final String? address;
   final String? dateOfBirth;
   final String? gender;
@@ -16,6 +17,7 @@ class UserModel {
     required this.name,
     required this.email,
     this.phone,
+    this.countryCode,
     this.address,
     this.dateOfBirth,
     this.gender,
@@ -30,6 +32,7 @@ class UserModel {
     'name': name,
     'email': email,
     'phone': phone,
+    'countryCode': countryCode,
     'address': address,
     'dateOfBirth': dateOfBirth,
     'gender': gender,
@@ -46,6 +49,7 @@ class UserModel {
         name: (json['name'] ?? json['Name'])?.toString() ?? '',
         email: (json['email'] ?? json['Email'])?.toString() ?? '',
         phone: (json['phone'] ?? json['Phone'])?.toString(),
+        countryCode: (json['countryCode'] ?? json['CountryCode'])?.toString(),
         address: (json['address'] ?? json['Address'])?.toString(),
         dateOfBirth: (json['dateOfBirth'] ?? json['DateOfBirth'])?.toString(),
         gender: (json['gender'] ?? json['Gender'])?.toString(),
@@ -70,6 +74,7 @@ class UserModel {
     String? name,
     String? email,
     String? phone,
+    String? countryCode,
     String? address,
     String? dateOfBirth,
     String? gender,
@@ -83,6 +88,7 @@ class UserModel {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      countryCode: countryCode ?? this.countryCode,
       address: address ?? this.address,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,

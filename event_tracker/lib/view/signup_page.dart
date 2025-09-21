@@ -1,21 +1,38 @@
 import '../utils/import_export.dart';
 import 'package:flutter/services.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 
-class SignupPage extends StatelessWidget {
+class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
+
+  @override
+  State<SignupPage> createState() => _SignupPageState();
+}
+
+class _SignupPageState extends State<SignupPage> {
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final phoneController = TextEditingController();
+  final RxString phoneError = ''.obs;
+  final RxBool isPasswordVisible = false.obs;
+  final RxBool isLoading = false.obs;
+  String _dialCode = '+91';
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final userController = Get.find<UserController>();
     final authController = Get.find<AuthController>();
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final phoneController = TextEditingController();
-    final RxString phoneError = ''.obs;
-    final RxBool isPasswordVisible = false.obs;
-    final RxBool isLoading = false.obs;
 
 
     return Scaffold(
@@ -122,30 +139,119 @@ class SignupPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Phone field with validation
-              ModernTextField(
-                controller: phoneController,
-                labelText: 'Phone Number',
-                hintText: '1234567890',
-                prefixIcon: Icons.phone_outlined,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
+              // Phone with Country Code
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surface,
+                    ),
+                    child: Theme(
+                      data: theme.copyWith(
+                        dialogBackgroundColor: theme.colorScheme.surface,
+                        textTheme: theme.textTheme,
+                        listTileTheme: ListTileThemeData(
+                          textColor: theme.colorScheme.onSurface,
+                          iconColor: theme.colorScheme.onSurfaceVariant,
+                          selectedColor: theme.colorScheme.primary,
+                          selectedTileColor: theme.colorScheme.primary.withOpacity(0.08),
+                        ),
+                        dividerColor: theme.colorScheme.outline,
+                      ),
+                      child: CountryCodePicker(
+                        onChanged: (code) {
+                          setState(() {
+                            _dialCode = code.dialCode ?? _dialCode;
+                          });
+                        },
+                        initialSelection: _dialCode.startsWith('+') ? _dialCode : 'IN',
+                        favorite: const ['+91', 'IN'],
+                        showFlag: true,
+                        showCountryOnly: false,
+                        showOnlyCountryWhenClosed: false,
+                        alignLeft: false,
+                        textStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        dialogTextStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        closeIcon: Icon(
+                          Icons.close,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        searchDecoration: InputDecoration(
+                          hintText: 'Search country or code...',
+                          prefixIcon: const Icon(Icons.search),
+                          prefixIconColor: theme.colorScheme.onSurfaceVariant,
+                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: theme.colorScheme.outline),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: theme.colorScheme.primary),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        barrierColor: theme.colorScheme.scrim.withOpacity(0.32),
+                        backgroundColor: theme.colorScheme.surface,
+                        dialogBackgroundColor: theme.colorScheme.surface,
+                        boxDecoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.shadow.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ModernTextField(
+                      controller: phoneController,
+                      labelText: 'Phone Number',
+                      hintText: '1234567890',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return 'Phone number is required';
+                        if (v.length != 10) return 'Phone number must be exactly 10 digits';
+                        if (!RegExp(r'^\d{10}$').hasMatch(v)) return 'Digits only';
+                        return null;
+                      },
+                      onChanged: (value) {
+                        final v = value.trim();
+                        if (v.isNotEmpty && v.length != 10) {
+                          phoneError.value = 'Phone number must be exactly 10 digits';
+                        } else {
+                          phoneError.value = '';
+                        }
+                      },
+                    ),
+                  ),
                 ],
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Phone number is required';
-                  if (value.length != 10) return 'Phone number must be exactly 10 digits';
-                  if (!RegExp(r'^[6-9]\d{9}$').hasMatch(value)) return 'Enter a valid Indian mobile number';
-                  return null;
-                },
-                onChanged: (value) {
-                  if (value.length < 10 && value.isNotEmpty) {
-                    phoneError.value = 'Phone number must be 10 digits';
-                  } else {
-                    phoneError.value = '';
-                  }
-                },
               ),
               Obx(() => phoneError.value.isNotEmpty
                 ? Padding(
@@ -207,7 +313,7 @@ class SignupPage extends StatelessWidget {
                 onPressed: isLoading.value ? null : () async {
                 final name = nameController.text.trim();
                 final email = emailController.text.trim();
-                final phone = phoneController.text.trim();
+                final phoneDigits = phoneController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
                 final password = passwordController.text.trim();
 
                 // Clear previous errors
@@ -238,10 +344,10 @@ class SignupPage extends StatelessWidget {
                 }
 
                 // Phone validation
-                if (phone.isEmpty) {
+                if (phoneDigits.isEmpty) {
                   phoneError.value = 'Phone number cannot be empty';
                   isValid = false;
-                } else if (phone.length != 10) {
+                } else if (phoneDigits.length != 10) {
                   phoneError.value = 'Phone number must be exactly 10 digits';
                   isValid = false;
                 }
@@ -250,20 +356,27 @@ class SignupPage extends StatelessWidget {
                 if (password.isEmpty) {
                   userController.passwordError.value = 'Password cannot be empty';
                   isValid = false;
-                } else if (password.length < 6) {
-                  userController.passwordError.value = 'Password must be at least 6 characters';
-                //   } else if (password.length < 8) {
-                //   userController.passwordError.value = 'Password must be at least 8 characters';
-                //   isValid = false;
-                // } else if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(password)) {
-                //   userController.passwordError.value = 'Password must contain uppercase, lowercase, and number';
+                } else if (password.length < 8) {
+                  userController.passwordError.value = 'Password must be at least 8 characters';
                   isValid = false;
+                } else if (!RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>])').hasMatch(password)) {
+                  userController.passwordError.value =
+                      'Password must contain at least one digit and one special character';
+                  isValid = false;
+                } else {
+                  userController.passwordError.value = ''; // clear error if valid
                 }
 
                   if (isValid) {
                     isLoading.value = true;
                     try {
-                      await authController.register(name, email, password);
+                      await authController.register(
+                        name,
+                        email,
+                        password,
+                        phone: phoneDigits,
+                        countryCode: _dialCode,
+                      );
                     } catch (e) {
                       ModernSnackbar.error(
                         title: 'Signup Failed',

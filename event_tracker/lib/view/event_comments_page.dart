@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:get/get.dart';
+import '../service/realtime_service.dart';
 import '../controller/event_comment_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/auth_controller.dart';
@@ -28,6 +29,9 @@ class _EventCommentsPageState extends State<EventCommentsPage> with TickerProvid
   Worker? _commentsWorker;
   Worker? _announcementsWorker;
   Timer? _poller;
+  StreamSubscription<EventComment>? _rtCommentSub;
+  StreamSubscription<EventComment>? _rtAnnouncementSub;
+  StreamSubscription? _rtConnSub;
 
   @override
   void initState() {
@@ -46,9 +50,34 @@ class _EventCommentsPageState extends State<EventCommentsPage> with TickerProvid
     // Load comments when page opens
     _commentController.loadEventComments(widget.event.id);
 
-    // Start background polling for real-time updates
-    _poller = Timer.periodic(const Duration(seconds: 7), (_) {
-      _commentController.loadEventComments(widget.event.id, silent: true);
+    // Subscribe to real-time streams
+    final rt = Get.find<RealTimeService>();
+    _rtCommentSub = rt.comments$.listen((ec) {
+      if (ec.eventId == widget.event.id && ec.commentType == 'comment') {
+        final exists = _commentController.comments.any((x) => x.id == ec.id);
+        if (!exists) _commentController.comments.add(ec);
+        _scrollToBottomDeferred();
+      }
+    });
+    _rtAnnouncementSub = rt.announcements$.listen((an) {
+      if (an.eventId == widget.event.id) {
+        final exists = _commentController.comments.any((x) => x.id == an.id);
+        if (!exists) _commentController.comments.add(an);
+        _scrollAnnouncementsBottomDeferred();
+      }
+    });
+    // On reconnect, refresh to catch up any missed messages
+    _rtConnSub = rt.connectionStatus.listen((status) {
+      if (status == ConnectionStatus.connected) {
+        _commentController.loadEventComments(widget.event.id, silent: true);
+      }
+    });
+
+    // Fallback polling only when not connected
+    _poller = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (rt.connectionStatus.value != ConnectionStatus.connected) {
+        _commentController.loadEventComments(widget.event.id, silent: true);
+      }
     });
 
     // Auto-scroll to bottom whenever the comments list changes
@@ -72,6 +101,9 @@ class _EventCommentsPageState extends State<EventCommentsPage> with TickerProvid
     _commentsScrollController.dispose();
     _announcementsScrollController.dispose();
     _poller?.cancel();
+    _rtCommentSub?.cancel();
+    _rtAnnouncementSub?.cancel();
+    _rtConnSub?.cancel();
     super.dispose();
   }
 
@@ -148,7 +180,7 @@ class _EventCommentsPageState extends State<EventCommentsPage> with TickerProvid
             );
           }),
         ),
-        _buildCommentInput(),
+        widget.event.commentsEnabled ? _buildCommentInput() : _buildCommentsDisabledNotice(),
       ],
     );
   }
@@ -425,6 +457,29 @@ class _EventCommentsPageState extends State<EventCommentsPage> with TickerProvid
           IconButton(
             onPressed: _postComment,
             icon: const Icon(Icons.send, color: Color(0xFFEB1555)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentsDisabledNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D1E33),
+        border: Border(top: BorderSide(color: Color(0x334A4A4A))),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.chat_bubble_outline, color: Colors.grey),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Comments are disabled for this event. You can still view announcements and, if you are the organizer, post announcements.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
         ],
       ),

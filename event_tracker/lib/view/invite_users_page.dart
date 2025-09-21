@@ -1,7 +1,7 @@
 import '../utils/import_export.dart';
 import '../service/contact_picker_service.dart';
 
-class InviteUsersPage extends StatelessWidget {
+class InviteUsersPage extends StatefulWidget {
   final String eventId;
   final String eventTitle;
 
@@ -12,9 +12,26 @@ class InviteUsersPage extends StatelessWidget {
   });
 
   @override
+  State<InviteUsersPage> createState() => _InviteUsersPageState();
+}
+
+class _InviteUsersPageState extends State<InviteUsersPage> {
+  final InviteController inviteController = Get.find<InviteController>();
+  final TextEditingController phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  void _applySearch(String raw) {
+    final v = raw.trim();
+    inviteController.searchQuery.value = v;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final inviteController = Get.find<InviteController>();
-    final phoneController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
@@ -22,7 +39,7 @@ class InviteUsersPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.people),
-            onPressed: () => Get.toNamed(ROUTE_EVENT_INVITES, arguments: eventId),
+            onPressed: () => Get.toNamed(ROUTE_EVENT_INVITES, arguments: widget.eventId),
             tooltip: 'View Invited Users',
           ),
         ],
@@ -36,7 +53,7 @@ class InviteUsersPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Invite to: $eventTitle',
+                  'Invite to: ${widget.eventTitle}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 16),
@@ -51,16 +68,12 @@ class InviteUsersPage extends StatelessWidget {
                           prefixIcon: const Icon(Icons.phone),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.search),
-                            onPressed: () {
-                              inviteController.searchQuery.value = phoneController.text.trim();
-                            },
+                            onPressed: () => _applySearch(phoneController.text.trim()),
                           ),
                           border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
-                        onChanged: (value) {
-                          inviteController.searchQuery.value = value;
-                        },
+                        onChanged: (value) => _applySearch(value),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -117,8 +130,9 @@ class InviteUsersPage extends StatelessWidget {
       if (contact != null) {
         final phoneNumber = ContactPickerService.getFirstPhoneNumber(contact);
         if (phoneNumber != null) {
+          // Use raw contact number; controller will handle candidates (digits-only, last-10, etc.)
           phoneController.text = phoneNumber;
-          inviteController.searchQuery.value = phoneNumber;
+          inviteController.searchQuery.value = phoneNumber.trim();
           
           // Show contact info in a snackbar
           ScaffoldMessenger.of(context).showSnackBar(
@@ -195,7 +209,7 @@ class InviteUsersPage extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () async {
                     final success = await controller.createEventInvite(
-                      eventId, 
+                      widget.eventId, 
                       user.userId,
                     );
                     if (success) {

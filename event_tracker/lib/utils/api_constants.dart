@@ -4,12 +4,16 @@ import 'package:flutter/foundation.dart';
 class ApiConstants {
   // Platform-specific base URLs
   static const String _webBaseUrl = 'https://localhost:7094/api';
-  static const String _mobileBaseUrl = 'https://10.26.71.9:7094/api'; // Android/physical device IP
+  static const String _mobileBaseUrl = 'https://10.97.110.91:7094/api'; // Android/physical device IP
   // For iOS simulator, use: 'https://localhost:7094/api'
   // For physical device, use your computer's IP: 'https://192.168.1.xxx:7094/api'
+  // Optional env override for all platforms: pass with --dart-define=API_BASE_URL=...
+  static const String _envOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
   
   // Dynamic base URL based on platform
   static String get baseUrl {
+    // Highest priority: explicit env override
+    if (_envOverride.isNotEmpty) return _envOverride;
     if (kIsWeb) {
       return _webBaseUrl;
     } else if (Platform.isAndroid) {

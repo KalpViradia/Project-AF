@@ -140,15 +140,66 @@ namespace EventTrackerAPI.Controllers
                     return BadRequest(new { message = "Invalid status. Allowed values are: pending, accepted, declined, cancelled" });
             }
 
-            invite.Status = status;
-            if (request.ParticipantCount.HasValue)
+            // If accepting, enforce capacity unless unlimited (MaxCapacity null)
+            if (status == InviteStatus.Accepted)
             {
-                invite.ParticipantCount = request.ParticipantCount.Value;
-                Console.WriteLine($"Updated participant count to: {invite.ParticipantCount}");
-            }
-            invite.UpdatedAt = DateTime.UtcNow;
+                await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    // Reload event to get capacity inside transaction
+                    var ev = invite.Event ?? await _context.Events.FirstOrDefaultAsync(e => e.Id == invite.EventId);
+                    if (ev == null)
+                    {
+                        return BadRequest(new { message = "Event not found for this invite" });
+                    }
 
-            await _context.SaveChangesAsync();
+                    var participantCount = request.ParticipantCount.HasValue ? request.ParticipantCount.Value : invite.ParticipantCount;
+                    if (participantCount <= 0) participantCount = 1;
+
+                    if (ev.MaxCapacity.HasValue && ev.MaxCapacity.Value > 0)
+                    {
+                        // Calculate currently accepted participants excluding this invite
+                        var currentAccepted = await _context.EventInvites
+                            .Where(ei => ei.EventId == invite.EventId && ei.Status == InviteStatus.Accepted && ei.Id != invite.Id)
+                            .SumAsync(ei => (int?)ei.ParticipantCount) ?? 0;
+
+                        var available = ev.MaxCapacity.Value - currentAccepted;
+                        if (available < participantCount)
+                        {
+                            return BadRequest(new { message = $"Capacity exceeded. Only {Math.Max(0, available)} spaces available." });
+                        }
+                    }
+
+                    // Safe to accept within transaction
+                    invite.Status = status;
+                    if (request.ParticipantCount.HasValue)
+                    {
+                        invite.ParticipantCount = request.ParticipantCount.Value;
+                        Console.WriteLine($"Updated participant count to: {invite.ParticipantCount}");
+                    }
+                    invite.UpdatedAt = DateTime.UtcNow;
+
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                // Non-acceptance paths don't need capacity enforcement
+                invite.Status = status;
+                if (request.ParticipantCount.HasValue)
+                {
+                    invite.ParticipantCount = request.ParticipantCount.Value;
+                    Console.WriteLine($"Updated participant count to: {invite.ParticipantCount}");
+                }
+                invite.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
 
             await _context.Entry(invite)
                 .Reference(x => x.Event).LoadAsync();
@@ -244,6 +295,9 @@ namespace EventTrackerAPI.Controllers
                     StartDateTime = ei.Event.StartDateTime,
                     EndDateTime = ei.Event.EndDateTime,
                     Address = ei.Event.Address,
+                    Latitude = ei.Event.Latitude,
+                    Longitude = ei.Event.Longitude,
+                    PickedFromMap = ei.Event.PickedFromMap,
                     CategoryId = ei.Event.CategoryId,
                     Category = ei.Event.Category != null ? new CategoryDTO
                     {

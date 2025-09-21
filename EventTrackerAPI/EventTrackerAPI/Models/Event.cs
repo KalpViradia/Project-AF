@@ -20,6 +20,11 @@ public partial class Event
 
     public string? Address { get; set; }
 
+    // Map location details
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public bool PickedFromMap { get; set; } = false;
+
     public int? CategoryId { get; set; }
 
     public string? EventType { get; set; }
@@ -32,6 +37,8 @@ public partial class Event
     public bool IsCompleted { get; set; }
 
     public bool IsVisible { get; set; }
+
+    public bool CommentsEnabled { get; set; } = true;
 
     public string CreatedBy { get; set; } = null!;
 
@@ -53,6 +60,4 @@ public partial class Event
     public virtual Category? Category { get; set; }
 
     public virtual User CreatedByNavigation { get; set; } = null!;
-
-    public virtual ICollection<EventUser> EventUsers { get; set; } = new List<EventUser>();
 }

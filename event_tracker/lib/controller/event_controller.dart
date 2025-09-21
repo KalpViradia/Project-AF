@@ -15,8 +15,132 @@ class EventController extends GetxController {
       (_) => loadEvents(),
       time: const Duration(milliseconds: 500),
     );
-    loadEvents();
-    loadInvisibleEvents();
+    // On startup, avoid noisy snackbars if auto-login is skipped
+    loadEvents(showSnackbars: false);
+    loadInvisibleEvents(showSnackbars: false);
+  }
+
+  // Create recurring event and return the created Event object
+  Future<Event?> createRecurringEventReturningEvent({
+    required String title,
+    required String description,
+    required DateTime startDateTime,
+    DateTime? endDateTime,
+    String? address,
+    double? latitude,
+    double? longitude,
+    bool pickedFromMap = false,
+    int? categoryId,
+    String? eventType,
+    required String recurrenceType,
+    int recurrenceInterval = 1,
+    DateTime? recurrenceEndDate,
+    int? maxCapacity,
+    bool commentsEnabled = true,
+  }) async {
+    try {
+      final userId = Get.find<AuthController>().currentUser.value?.userId;
+      if (userId == null) return null;
+
+      final event = Event(
+        title: title,
+        description: description,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+        pickedFromMap: pickedFromMap,
+        categoryId: categoryId,
+        eventType: eventType,
+        maxCapacity: maxCapacity,
+        commentsEnabled: commentsEnabled,
+        createdBy: userId,
+        isRecurring: true,
+        recurrenceType: recurrenceType,
+        recurrenceInterval: recurrenceInterval,
+        recurrenceEndDate: recurrenceEndDate,
+      );
+
+      final created = await _eventService.createEvent(event);
+      await loadEvents();
+      ModernSnackbar.success(
+        title: 'Recurring Event Created',
+        message: 'Your recurring event has been created successfully',
+      );
+      return created;
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data['message'] ?? 'Failed to create recurring event';
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: errorMessage,
+      );
+      return null;
+    } catch (e) {
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: 'Failed to create recurring event',
+      );
+      return null;
+    }
+  }
+
+  // Create event and return the created Event object
+  Future<Event?> createEventReturningEvent({
+    required String title,
+    required String description,
+    required DateTime startDateTime,
+    DateTime? endDateTime,
+    String? address,
+    double? latitude,
+    double? longitude,
+    bool pickedFromMap = false,
+    int? categoryId,
+    String? eventType,
+    int? maxCapacity,
+    bool commentsEnabled = true,
+  }) async {
+    try {
+      final userId = Get.find<AuthController>().currentUser.value?.userId;
+      if (userId == null) return null;
+
+      final event = Event(
+        title: title,
+        description: description,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+        pickedFromMap: pickedFromMap,
+        categoryId: categoryId,
+        eventType: eventType,
+        maxCapacity: maxCapacity,
+        commentsEnabled: commentsEnabled,
+        createdBy: userId,
+      );
+
+      final created = await _eventService.createEvent(event);
+      await loadEvents();
+      ModernSnackbar.success(
+        title: 'Event Created',
+        message: 'Your event has been created successfully',
+      );
+      return created;
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data['message'] ?? 'Failed to create event';
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: errorMessage,
+      );
+      return null;
+    } catch (e) {
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: 'Failed to create event',
+      );
+      return null;
+    }
   }
 
   Future<Event?> toggleEventStatus(String eventId, {bool? isCancelled, bool? isCompleted}) async {
@@ -59,7 +183,7 @@ class EventController extends GetxController {
     }
   }
 
-  Future<void> loadEvents() async {
+  Future<void> loadEvents({bool showSnackbars = true}) async {
     isLoading.value = true;
     try {
       final userId = Get.find<AuthController>().currentUser.value?.userId;
@@ -72,15 +196,21 @@ class EventController extends GetxController {
       final errorMessage = e.response?.data is Map ? 
           (e.response?.data['message']?.toString() ?? 'Failed to load events') : 
           'Failed to load events';
-      ModernSnackbar.error(
-        title: 'Loading Failed',
-        message: errorMessage,
-      );
+      final loggedIn = Get.find<AuthController>().isLoggedIn.value;
+      if (showSnackbars && loggedIn) {
+        ModernSnackbar.error(
+          title: 'Loading Failed',
+          message: errorMessage,
+        );
+      }
     } catch (e) {
-      ModernSnackbar.error(
-        title: 'Loading Failed',
-        message: 'Failed to load events',
-      );
+      final loggedIn = Get.find<AuthController>().isLoggedIn.value;
+      if (showSnackbars && loggedIn) {
+        ModernSnackbar.error(
+          title: 'Loading Failed',
+          message: 'Failed to load events',
+        );
+      }
     } finally {
       isLoading.value = false;
     }
@@ -92,13 +222,13 @@ class EventController extends GetxController {
     required DateTime startDateTime,
     DateTime? endDateTime,
     String? address,
+    double? latitude,
+    double? longitude,
+    bool pickedFromMap = false,
     int? categoryId,
     String? eventType,
     int? maxCapacity,
-    bool isRecurring = false,
-    String? recurrenceType,
-    int recurrenceInterval = 1,
-    DateTime? recurrenceEndDate,
+    bool commentsEnabled = true,
   }) async {
     try {
       final userId = Get.find<AuthController>().currentUser.value?.userId;
@@ -110,14 +240,14 @@ class EventController extends GetxController {
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         address: address,
+        latitude: latitude,
+        longitude: longitude,
+        pickedFromMap: pickedFromMap,
         categoryId: categoryId,
         eventType: eventType,
         maxCapacity: maxCapacity,
+        commentsEnabled: commentsEnabled,
         createdBy: userId,
-        isRecurring: isRecurring,
-        recurrenceType: recurrenceType,
-        recurrenceInterval: recurrenceInterval,
-        recurrenceEndDate: recurrenceEndDate,
       );
 
       await _eventService.createEvent(event);
@@ -138,6 +268,71 @@ class EventController extends GetxController {
       ModernSnackbar.error(
         title: 'Creation Failed',
         message: 'Failed to create event',
+      );
+      return false;
+    }
+  }
+
+  // Separate method for creating recurring events
+  Future<bool> createRecurringEvent({
+    required String title,
+    required String description,
+    required DateTime startDateTime,
+    DateTime? endDateTime,
+    String? address,
+    double? latitude,
+    double? longitude,
+    bool pickedFromMap = false,
+    int? categoryId,
+    String? eventType,
+    required String recurrenceType,
+    int recurrenceInterval = 1,
+    DateTime? recurrenceEndDate,
+    int? maxCapacity,
+    bool commentsEnabled = true,
+  }) async {
+    try {
+      final userId = Get.find<AuthController>().currentUser.value?.userId;
+      if (userId == null) return false;
+
+      final event = Event(
+        title: title,
+        description: description,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+        pickedFromMap: pickedFromMap,
+        categoryId: categoryId,
+        eventType: eventType,
+        maxCapacity: maxCapacity,
+        commentsEnabled: commentsEnabled,
+        createdBy: userId,
+        isRecurring: true,
+        recurrenceType: recurrenceType,
+        recurrenceInterval: recurrenceInterval,
+        recurrenceEndDate: recurrenceEndDate,
+      );
+
+      await _eventService.createEvent(event);
+      await loadEvents();
+      ModernSnackbar.success(
+        title: 'Recurring Event Created',
+        message: 'Your recurring event has been created successfully',
+      );
+      return true;
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data['message'] ?? 'Failed to create recurring event';
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: errorMessage,
+      );
+      return false;
+    } catch (e) {
+      ModernSnackbar.error(
+        title: 'Creation Failed',
+        message: 'Failed to create recurring event',
       );
       return false;
     }
@@ -197,7 +392,7 @@ class EventController extends GetxController {
     }
   }
 
-  Future<void> loadInvisibleEvents() async {
+  Future<void> loadInvisibleEvents({bool showSnackbars = true}) async {
     try {
       final userId = Get.find<AuthController>().currentUser.value?.userId;
       invisibleEvents.value = await _eventService.getInvisibleEvents(
@@ -207,15 +402,21 @@ class EventController extends GetxController {
       final errorMessage = e.response?.data is Map ? 
           (e.response?.data['message']?.toString() ?? 'Failed to load hidden events') : 
           'Failed to load hidden events';
-      ModernSnackbar.error(
-        title: 'Loading Failed',
-        message: errorMessage,
-      );
+      final loggedIn = Get.find<AuthController>().isLoggedIn.value;
+      if (showSnackbars && loggedIn) {
+        ModernSnackbar.error(
+          title: 'Loading Failed',
+          message: errorMessage,
+        );
+      }
     } catch (e) {
-      ModernSnackbar.error(
-        title: 'Loading Failed',
-        message: 'Failed to load hidden events',
-      );
+      final loggedIn = Get.find<AuthController>().isLoggedIn.value;
+      if (showSnackbars && loggedIn) {
+        ModernSnackbar.error(
+          title: 'Loading Failed',
+          message: 'Failed to load hidden events',
+        );
+      }
     }
   }
 

@@ -22,7 +22,14 @@ class RecurringEventsPage extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            // Try to go back, if navigation stack is empty, go to home
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Get.offAllNamed(ROUTE_HOME);
+            }
+          },
         ),
         title: Row(
           children: [

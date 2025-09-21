@@ -57,26 +57,46 @@ class InviteService {
     try {
       print('Loading user invites for userId: $userId');
       final response = await _dio.get('$baseUrl/event-invites/user/$userId');
-      print('User invites response: ${response.statusCode} - ${response.data}');
-      final List<dynamic> data = response.data;
-      return data.map((json) => EventInviteModel.fromJson(json)).toList();
+      print('User invites response: ${response.statusCode}');
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) {
+          try {
+            return EventInviteModel.fromJson(json);
+          } catch (e) {
+            print('Invite parse error: $e; json=$json');
+            return null;
+          }
+        }).whereType<EventInviteModel>().toList();
+      }
+      return <EventInviteModel>[];
     } catch (e) {
       print('Error loading user invites: $e');
-      rethrow;
+      return <EventInviteModel>[];
     }
   }
 
-  // Get invites for a user
+  // Get invites for a user (full list)
   Future<List<EventInviteModel>> getUserInvites(String userId) async {
     try {
       print('Loading user invites for userId: $userId');
       final response = await _dio.get('$baseUrl/event-invites/user/$userId');
-      print('User invites response: ${response.statusCode} - ${response.data}');
-      final List<dynamic> data = response.data;
-      return data.map((json) => EventInviteModel.fromJson(json)).toList();
+      print('User invites response: ${response.statusCode}');
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) {
+          try {
+            return EventInviteModel.fromJson(json);
+          } catch (e) {
+            print('Invite parse error: $e; json=$json');
+            return null;
+          }
+        }).whereType<EventInviteModel>().toList();
+      }
+      return <EventInviteModel>[];
     } catch (e) {
       print('Error loading user invites: $e');
-      rethrow;
+      return <EventInviteModel>[];
     }
   }
 
@@ -85,12 +105,22 @@ class InviteService {
     try {
       print('Loading pending invites for userId: $userId');
       final response = await _dio.get('$baseUrl/event-invites/pending/user/$userId');
-      print('Pending invites response: ${response.statusCode} - ${response.data}');
-      final List<dynamic> data = response.data;
-      return data.map((json) => EventInviteModel.fromJson(json)).toList();
+      print('Pending invites response: ${response.statusCode}');
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) {
+          try {
+            return EventInviteModel.fromJson(json);
+          } catch (e) {
+            print('Invite parse error: $e; json=$json');
+            return null;
+          }
+        }).whereType<EventInviteModel>().toList();
+      }
+      return <EventInviteModel>[];
     } catch (e) {
       print('Error loading pending invites: $e');
-      rethrow;
+      return <EventInviteModel>[];
     }
   }
 
